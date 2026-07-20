@@ -25,7 +25,8 @@ import {
   Share2,
   Bookmark,
   MapPin,
-  FileText
+  FileText,
+  Database
 } from 'lucide-react';
 
 import AgeVerificationModal from './components/AgeVerificationModal';
@@ -33,9 +34,12 @@ import CustomizeCrateBuilder from './components/CustomizeCrateBuilder';
 import CheckoutDrawer from './components/CheckoutDrawer';
 import OrderTracker from './components/OrderTracker';
 import PersonalizeCardModal from './components/PersonalizeCardModal';
+import DbControlCenter from './components/DbControlCenter';
 
 import { HERO_IMAGES, RELATION_IMAGES, PANTRY_IMAGES, PRE_CURATED_GIFTS, STANDALONE_THREADS } from './data';
 import { CartItem, Order, SimulatedEmail, StandaloneThreadItem } from './types';
+import { dbService } from './dbService';
+import { isFirebaseConfigured } from './firebase';
 
 export default function App() {
   const [isVerified, setIsVerified] = useState(false);
@@ -59,63 +63,86 @@ export default function App() {
   // Countdown States
   const [countdown, setCountdown] = useState({ days: '38', hours: '22', minutes: '06', seconds: '01' });
 
-  // Initialize a realistic default order for demonstration
-  useEffect(() => {
-    const demoOrderId = 'RC-2026-102941';
-    const timestamp = new Date(Date.now() - 3600000).toLocaleString(); // 1 hour ago
-    
-    const demoOrder: Order = {
-      id: demoOrderId,
-      createdAt: timestamp,
-      items: [
-        {
-          id: 'demo-item-1',
-          type: 'pre-curated',
-          title: 'The Traditional Mithai Crate',
-          price: 38.00,
-          image: PANTRY_IMAGES.sweets,
-          description: 'A luxurious combination pairing a premium 24K Gold-Plated Ganesha Rakhi thread with a fresh 250g box of hand-rolled Silver Kaju Katli and Saffron Laddus.',
-          details: {
-            crateBoxName: 'Heritage Pine Wood Crate',
-            rakhiName: '24K Gold Ganesha Thread',
-            treatsNames: ['Artisanal Silver Kaju Katli (250g)', 'Saffron Motichoor Delight (250g)'],
-            card: {
-              templateId: 'mandala-royal',
-              toName: 'Beloved Brother Rahul',
-              fromName: 'Priya Sharma',
-              message: 'Wishing you a very Happy Raksha Bandhan! Even though we are oceans apart, this Ganesha Rakhi carries all my protective thoughts and sweet memories. Enjoy the laddoos!'
-            }
-          },
-          quantity: 1
-        }
-      ],
-      shipping: {
-        senderName: 'Priya Sharma',
-        senderEmail: 'priya@gmail.com',
-        recipientName: 'Rahul Sharma',
-        recipientPhone: '+44 7911 123456',
-        addressLine1: 'Flat 12, Westway Apartments',
-        addressLine2: 'Kensington',
-        city: 'London',
-        postcode: 'W8 4PT',
-        country: 'United Kingdom',
-        deliveryDate: '2026-08-27'
-      },
-      paymentMethod: 'stripe',
-      amount: 41.99,
-      status: 'assembled',
-      timeline: [
-        { status: 'ordered', timestamp: '10:15 AM', title: 'Order Received', description: 'Gifting request validated and secured.', completed: true },
-        { status: 'assembled', timestamp: '11:02 AM', title: 'Crate Customization', description: 'Gifts hand-assembled with wood wool padding.', completed: true },
-        { status: 'dispatched', timestamp: '--', title: 'Dispatched to London Courier Hub', description: 'Handed over to Royal Mail Express Gifting.', completed: false },
-        { status: 'out-for-delivery', timestamp: '--', title: 'Out for Local Delivery', description: 'Courier carrying the crate to recipient\'s door.', completed: false },
-        { status: 'delivered', timestamp: '--', title: 'Delivered Successfully', description: 'The traditional thread tied and celebratory sweets shared.', completed: false }
-      ]
-    };
+  // Database Connection Panel state
+  const [showDbControl, setShowDbControl] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
-    // Add demo order & emails if none exist
-    setOrders([demoOrder]);
-    
+  // Initialize and load from dbService
+  useEffect(() => {
+    // Sync auth state
+    const unsubscribeAuth = dbService.onAuthStateChanged((user) => {
+      setCurrentUser(user);
+      // Load cart for this user
+      dbService.getCart(user.uid).then((savedCart) => {
+        if (savedCart && savedCart.length > 0) {
+          setCart(savedCart);
+        }
+      });
+    });
+
+    // Subscribe to real-time orders
+    const unsubscribeOrders = dbService.subscribeToOrders((fetchedOrders) => {
+      if (fetchedOrders.length === 0) {
+        // Seed default order
+        const demoOrderId = 'RC-2026-102941';
+        const timestamp = new Date(Date.now() - 3600000).toLocaleString(); // 1 hour ago
+        const demoOrder: Order = {
+          id: demoOrderId,
+          createdAt: timestamp,
+          items: [
+            {
+              id: 'demo-item-1',
+              type: 'pre-curated',
+              title: 'The Traditional Mithai Crate',
+              price: 38.00,
+              image: PANTRY_IMAGES.sweets,
+              description: 'A luxurious combination pairing a premium 24K Gold-Plated Ganesha Rakhi thread with a fresh 250g box of hand-rolled Silver Kaju Katli and Saffron Laddus.',
+              details: {
+                crateBoxName: 'Heritage Pine Wood Crate',
+                rakhiName: '24K Gold Ganesha Thread',
+                treatsNames: ['Artisanal Silver Kaju Katli (250g)', 'Saffron Motichoor Delight (250g)'],
+                card: {
+                  templateId: 'mandala-royal',
+                  toName: 'Beloved Brother Rahul',
+                  fromName: 'Priya Sharma',
+                  message: 'Wishing you a very Happy Raksha Bandhan! Even though we are oceans apart, this Ganesha Rakhi carries all my protective thoughts and sweet memories. Enjoy the laddoos!'
+                }
+              },
+              quantity: 1
+            }
+          ],
+          shipping: {
+            senderName: 'Priya Sharma',
+            senderEmail: 'priya@gmail.com',
+            recipientName: 'Rahul Sharma',
+            recipientPhone: '+44 7911 123456',
+            addressLine1: 'Flat 12, Westway Apartments',
+            addressLine2: 'Kensington',
+            city: 'London',
+            postcode: 'W8 4PT',
+            country: 'United Kingdom',
+            deliveryDate: '2026-08-27'
+          },
+          paymentMethod: 'stripe',
+          amount: 41.99,
+          status: 'assembled',
+          timeline: [
+            { status: 'ordered', timestamp: '10:15 AM', title: 'Order Received', description: 'Gifting request validated and secured.', completed: true },
+            { status: 'assembled', timestamp: '11:02 AM', title: 'Crate Customization', description: 'Gifts hand-assembled with wood wool padding.', completed: true },
+            { status: 'dispatched', timestamp: '--', title: 'Dispatched to London Courier Hub', description: 'Handed over to Royal Mail Express Gifting.', completed: false },
+            { status: 'out-for-delivery', timestamp: '--', title: 'Out for Local Delivery', description: 'Courier carrying the crate to recipient\'s door.', completed: false },
+            { status: 'delivered', timestamp: '--', title: 'Delivered Successfully', description: 'The traditional thread tied and celebratory sweets shared.', completed: false }
+          ]
+        };
+        dbService.saveOrder(demoOrder);
+        setOrders([demoOrder]);
+      } else {
+        // Sort orders by id or date descending
+        setOrders(fetchedOrders);
+      }
+    });
+
+    const demoOrderId = 'RC-2026-102941';
     const demoEmail1: SimulatedEmail = {
       id: 'demo-email-1',
       orderId: demoOrderId,
@@ -156,6 +183,11 @@ export default function App() {
     };
 
     setEmails([demoEmail1, demoEmail2]);
+
+    return () => {
+      unsubscribeAuth();
+      unsubscribeOrders();
+    };
   }, []);
 
   // Countdown timer calculation
@@ -191,31 +223,54 @@ export default function App() {
   const handleAddToCart = (item: CartItem) => {
     setCart((prevCart) => {
       const exists = prevCart.find((i) => i.id === item.id);
-      if (exists) {
-        return prevCart.map((i) => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
-      }
-      return [...prevCart, item];
+      const next = exists 
+        ? prevCart.map((i) => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i)
+        : [...prevCart, item];
+      dbService.saveCart(next, currentUser?.uid);
+      return next;
     });
     setIsCartOpen(true);
   };
 
   const handleUpdateCartQty = (id: string, amount: number) => {
-    setCart((prevCart) => prevCart.map((item) => {
-      if (item.id === id) {
-        const nextQty = item.quantity + amount;
-        return nextQty > 0 ? { ...item, quantity: nextQty } : item;
-      }
-      return item;
-    }).filter((item) => item.quantity > 0));
+    setCart((prevCart) => {
+      const next = prevCart.map((item) => {
+        if (item.id === id) {
+          const nextQty = item.quantity + amount;
+          return nextQty > 0 ? { ...item, quantity: nextQty } : item;
+        }
+        return item;
+      }).filter((item) => item.quantity > 0);
+      dbService.saveCart(next, currentUser?.uid);
+      return next;
+    });
   };
 
   const handleRemoveFromCart = (id: string) => {
-    setCart((prevCart) => prevCart.filter((item) => item.id !== id));
+    setCart((prevCart) => {
+      const next = prevCart.filter((item) => item.id !== id);
+      dbService.saveCart(next, currentUser?.uid);
+      return next;
+    });
+  };
+
+  // Helper to clear local order cache during testing
+  const handleClearLocalCache = () => {
+    localStorage.removeItem('rakhi_crate_orders');
+    localStorage.removeItem('rakhi_crate_cart');
+    setCart([]);
+    // Reload defaults
+    window.location.reload();
   };
 
   // Checkout hook completion
   const handleOrderCompleted = (newOrder: Order) => {
-    setOrders((prev) => [...prev, newOrder]);
+    dbService.saveOrder(newOrder);
+    setOrders((prev) => [...prev.filter(o => o.id !== newOrder.id), newOrder]);
+    
+    // Clear cart in DB
+    dbService.saveCart([], currentUser?.uid);
+    setCart([]);
     
     // Auto trigger first email
     const firstEmail: SimulatedEmail = {
@@ -1337,6 +1392,26 @@ export default function App() {
           />
         )}
       </AnimatePresence>
+
+      {/* FLOATING SYSTEM ARCHITECTURE BUTTON */}
+      <div className="fixed bottom-6 right-6 z-40">
+        <button
+          onClick={() => setShowDbControl(true)}
+          className="flex items-center gap-2 bg-primary text-white px-4 py-3 rounded-full shadow-lg hover:bg-primary/95 hover:scale-105 active:scale-95 transition-all font-mono text-xs font-black uppercase tracking-wider cursor-pointer border border-white/10"
+        >
+          <Database className="w-4 h-4 text-white animate-pulse" />
+          <span>Database Center</span>
+          <span className={`w-2 h-2 rounded-full ${isFirebaseConfigured ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+        </button>
+      </div>
+
+      {/* DATABASE CONTROL CENTER DRAWER */}
+      <DbControlCenter 
+        orders={orders}
+        isOpen={showDbControl}
+        onClose={() => setShowDbControl(false)}
+        onClearLocalCache={handleClearLocalCache}
+      />
 
     </div>
   );
