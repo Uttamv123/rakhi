@@ -1,0 +1,6 @@
+{
+  "name": "Rakhi Crate",
+  "description": "Premium Rakhi gifting website specializing in hand-assembled festive crates delivered to the United Kingdom, featuring an interactive crate builder, personalized message cards, age verification, secure payment integrations, and real-time order tracking with automated notification simulations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,52 @@
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Libre Caslon Text", Georgia, serif;
+  --font-sans: "Hanken Grotesk", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  --color-primary: #700016;
+  --color-deep-festive-red: #700016;
+  --color-secondary-gold: #C4A484;
+  --color-gold-accent: #C4A484;
+  --color-paper-neutral: #FFFFFF;
+  --color-uk-badge-blue: #1D4ED8;
+  --color-charcoal-text: #2C2523;
+  --color-warm-cream: #FAF6F0;
+  --color-site-bg: #FAF6F0;
+}
+
+body {
+  background-color: var(--color-site-bg);
+  color: var(--color-charcoal-text);
+  font-family: var(--font-sans);
+}
+
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+.font-sans {
+  font-family: var(--font-sans);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Custom scrollbar for an elegant look */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0F1115;
+}
+::-webkit-scrollbar-thumb {
+  background: #1A1C20;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #C4A484;
+}
+
