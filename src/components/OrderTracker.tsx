@@ -19,11 +19,14 @@ import {
   MessageSquare,
   Gift,
   ArrowRight,
-  AlertCircle
+  AlertCircle,
+  X
 } from 'lucide-react';
 import { Order, SimulatedEmail } from '../types';
 
 interface OrderTrackerProps {
+  isOpen: boolean;
+  onClose: () => void;
   orders: Order[];
   onUpdateOrderStatus: (orderId: string, nextStatus: Order['status']) => void;
   onAddSimulatedEmail: (orderId: string, email: SimulatedEmail) => void;
@@ -32,6 +35,8 @@ interface OrderTrackerProps {
 }
 
 export default function OrderTracker({ 
+  isOpen,
+  onClose,
   orders, 
   onUpdateOrderStatus, 
   onAddSimulatedEmail,
@@ -234,9 +239,33 @@ export default function OrderTracker({
     ? emails.filter(e => e.orderId === selectedOrder.id)
     : [];
 
+  if (!isOpen) return null;
+
   return (
-    <section id="order-tracking-hub" className="py-20 bg-[#0F1115] border-t border-white/10 text-[#E5E1DA]">
-      <div className="max-w-7xl mx-auto px-4 md:px-8">
+    <div className="fixed inset-0 z-50 bg-[#0F1115] flex flex-col overflow-y-auto text-[#E5E1DA]">
+      {/* Sticky Top Bar Header */}
+      <div className="sticky top-0 z-50 bg-[#15171C] border-b border-white/10 px-6 py-4 flex justify-between items-center shrink-0 shadow-lg">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-[#C4A484]/10 rounded-lg border border-[#C4A484]/20">
+            <Truck className="w-5 h-5 text-[#C4A484] animate-pulse" />
+          </div>
+          <div>
+            <h2 className="font-serif text-lg font-black italic tracking-wide text-white">UK Courier Logistics Center</h2>
+            <p className="text-[10px] text-white/60 font-mono uppercase tracking-widest">
+              Live Dispatch Ledger & Sibling Email Hub
+            </p>
+          </div>
+        </div>
+        <button 
+          onClick={onClose}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-xs font-mono font-bold text-[#E5E1DA] hover:bg-white/15 transition-all cursor-pointer shadow-sm hover:scale-103"
+        >
+          <X className="w-4 h-4 text-[#E5E1DA]" />
+          <span>Close Logistics Hub</span>
+        </button>
+      </div>
+
+      <div className="flex-1 py-12 px-4 md:px-8 max-w-7xl mx-auto w-full">
         
         {/* Title */}
         <div className="text-center mb-12">
@@ -580,6 +609,6 @@ export default function OrderTracker({
         )}
 
       </div>
-    </section>
+    </div>
   );
 }

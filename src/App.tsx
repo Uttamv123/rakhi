@@ -35,6 +35,7 @@ import CheckoutDrawer from './components/CheckoutDrawer';
 import OrderTracker from './components/OrderTracker';
 import PersonalizeCardModal from './components/PersonalizeCardModal';
 import DbControlCenter from './components/DbControlCenter';
+import UserProfileDrawer from './components/UserProfileDrawer';
 
 import { HERO_IMAGES, RELATION_IMAGES, PANTRY_IMAGES, PRE_CURATED_GIFTS, STANDALONE_THREADS } from './data';
 import { CartItem, Order, SimulatedEmail, StandaloneThreadItem } from './types';
@@ -66,6 +67,8 @@ export default function App() {
   // Database Connection Panel state
   const [showDbControl, setShowDbControl] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [showProfile, setShowProfile] = useState(false);
+  const [showTracker, setShowTracker] = useState(false);
 
   // Initialize and load from dbService
   useEffect(() => {
@@ -297,14 +300,9 @@ export default function App() {
 
     setEmails((prev) => [...prev, firstEmail]);
 
-    // Close checkout and scroll to tracker
+    // Close checkout and open tracker modal
     setShowCheckout(false);
-    setTimeout(() => {
-      const trackerSection = document.getElementById('order-tracking-hub');
-      if (trackerSection) {
-        trackerSection.scrollIntoView({ behavior: 'smooth' });
-      }
-    }, 500);
+    setShowTracker(true);
   };
 
   const updateOrderStatus = (orderId: string, status: Order['status']) => {
@@ -362,21 +360,35 @@ export default function App() {
               <a href="#festive-pantry-rack" className="text-stone-600 hover:text-primary transition-colors text-xs font-bold uppercase tracking-widest">
                 Gourmet Sweets
               </a>
-              <a href="#order-tracking-hub" className="text-stone-600 hover:text-primary transition-colors text-xs font-bold uppercase tracking-widest flex items-center gap-1.5">
+              <button 
+                onClick={() => setShowTracker(true)}
+                className="text-stone-600 hover:text-primary transition-colors text-xs font-bold uppercase tracking-widest flex items-center gap-1.5 cursor-pointer bg-transparent border-none outline-hidden"
+              >
                 Shipment Tracker
                 <span className="w-2 h-2 rounded-full bg-primary block animate-pulse" />
-              </a>
+              </button>
             </nav>
           </div>
 
           <div className="flex items-center gap-6">
-            <a href="#order-tracking-hub" className="text-stone-600 hover:text-primary transition-colors flex items-center gap-1.5">
+            <button 
+              onClick={() => setShowTracker(true)}
+              className="text-stone-600 hover:text-primary transition-colors flex items-center gap-1.5 cursor-pointer bg-transparent border-none outline-hidden"
+            >
               <Truck className="w-5 h-5 text-primary" />
               <span className="hidden sm:inline text-xs font-bold font-mono">UK Courier</span>
-            </a>
+            </button>
             
-            <button className="text-stone-600 hover:text-primary transition-colors cursor-pointer">
+            <button 
+              onClick={() => setShowProfile(true)}
+              className="text-stone-600 hover:text-primary transition-colors cursor-pointer relative flex items-center gap-1 bg-stone-50 hover:bg-stone-100 p-2 rounded-lg border border-stone-200/50"
+              title="Customer Profile & Order History"
+              id="customer-profile-btn"
+            >
               <User className="w-5 h-5" />
+              {currentUser && !currentUser.isAnonymous && (
+                <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-emerald-500 rounded-full border border-white" />
+              )}
             </button>
             
             <button 
@@ -1059,14 +1071,7 @@ export default function App() {
           </div>
         </section>
 
-        {/* SHIPMENT TRACKER & EMAIL ALERT SIMULATION (REQUIREMENTS) */}
-        <OrderTracker 
-          orders={orders}
-          onUpdateOrderStatus={updateOrderStatus}
-          onAddSimulatedEmail={addSimulatedEmail}
-          emails={emails}
-          onMarkEmailRead={markEmailRead}
-        />
+
 
         {/* CUSTOMER REVIEWS (VOICE OF OUR CRATE FAMILY) */}
         <section className="py-20 bg-site-bg border-t border-stone-100">
@@ -1184,7 +1189,7 @@ export default function App() {
             <h4 className="font-bold text-xs text-primary uppercase tracking-widest font-sans">Customer Support</h4>
             <ul className="space-y-2 text-charcoal-text/75 font-mono text-[11px]">
               <li><a href="#" className="hover:text-primary transition-colors">Delivery Policy</a></li>
-              <li><a href="#order-tracking-hub" className="hover:text-primary transition-colors">Track Shipment Route</a></li>
+              <li><button onClick={() => setShowTracker(true)} className="hover:text-primary transition-colors cursor-pointer text-left bg-transparent border-none outline-hidden">Track Shipment Route</button></li>
               <li><a href="#" className="hover:text-primary transition-colors">PayPal &amp; Stripe Sandboxes</a></li>
               <li><a href="#" className="hover:text-primary transition-colors">Our Story &amp; Artisans</a></li>
             </ul>
@@ -1230,6 +1235,8 @@ export default function App() {
             onClose={() => setShowCheckout(false)}
             onOrderCompleted={handleOrderCompleted}
             onClearCart={() => setCart([])}
+            userEmail={currentUser?.email || undefined}
+            userId={currentUser?.uid || undefined}
           />
         )}
       </AnimatePresence>
@@ -1393,24 +1400,25 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* FLOATING SYSTEM ARCHITECTURE BUTTON */}
-      <div className="fixed bottom-6 right-6 z-40">
-        <button
-          onClick={() => setShowDbControl(true)}
-          className="flex items-center gap-2 bg-primary text-white px-4 py-3 rounded-full shadow-lg hover:bg-primary/95 hover:scale-105 active:scale-95 transition-all font-mono text-xs font-black uppercase tracking-wider cursor-pointer border border-white/10"
-        >
-          <Database className="w-4 h-4 text-white animate-pulse" />
-          <span>Database Center</span>
-          <span className={`w-2 h-2 rounded-full ${isFirebaseConfigured ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-        </button>
-      </div>
-
-      {/* DATABASE CONTROL CENTER DRAWER */}
-      <DbControlCenter 
+      {/* CUSTOMER PROFILE & ORDER HISTORY DRAWER */}
+      <UserProfileDrawer 
+        isOpen={showProfile}
+        onClose={() => setShowProfile(false)}
+        currentUser={currentUser}
         orders={orders}
-        isOpen={showDbControl}
-        onClose={() => setShowDbControl(false)}
-        onClearLocalCache={handleClearLocalCache}
+        onAddToCart={handleAddToCart}
+        onOpenCart={() => setIsCartOpen(true)}
+      />
+
+      {/* COURIER LOGISTICS & SHIPMENT TRACKER */}
+      <OrderTracker 
+        isOpen={showTracker}
+        onClose={() => setShowTracker(false)}
+        orders={orders}
+        onUpdateOrderStatus={updateOrderStatus}
+        onAddSimulatedEmail={addSimulatedEmail}
+        emails={emails}
+        onMarkEmailRead={markEmailRead}
       />
 
     </div>

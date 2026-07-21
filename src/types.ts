@@ -109,6 +109,7 @@ export interface ShippingDetails {
 
 export interface Order {
   id: string;
+  userId?: string;
   createdAt: string;
   items: CartItem[];
   shipping: ShippingDetails;

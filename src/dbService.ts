@@ -50,6 +50,44 @@ const saveLocalCart = (cart: CartItem[]) => {
   localStorage.setItem('rakhi_crate_cart', JSON.stringify(cart));
 };
 
+// Authentication simulation states
+const listeners: ((user: any) => void)[] = [];
+let localUser: any = null;
+
+try {
+  const storedSession = localStorage.getItem('rakhi_crate_session');
+  if (storedSession) {
+    localUser = JSON.parse(storedSession);
+  } else {
+    localUser = { uid: 'demo-user-123', isAnonymous: true, email: 'demo@rakhicrate.co.uk' };
+  }
+} catch (e) {
+  console.error('Error loading stored session:', e);
+}
+
+const notifyListeners = (user: any) => {
+  localUser = user;
+  if (user) {
+    localStorage.setItem('rakhi_crate_session', JSON.stringify(user));
+  } else {
+    localStorage.removeItem('rakhi_crate_session');
+  }
+  listeners.forEach(cb => cb(user));
+};
+
+const getLocalRegisteredUsers = (): any[] => {
+  try {
+    const raw = localStorage.getItem('rakhi_crate_users');
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+const saveLocalRegisteredUsers = (users: any[]) => {
+  localStorage.setItem('rakhi_crate_users', JSON.stringify(users));
+};
+
 export const dbService = {
   // Authentication
   async signInAnonymously(): Promise<any> {
@@ -61,13 +99,77 @@ export const dbService = {
         console.error('Firebase Auth failed, continuing in demo mode:', error);
       }
     }
-    return { uid: 'demo-user-123', isAnonymous: true, email: 'demo@rakhicrate.co.uk' };
+    const guestUser = { uid: 'demo-user-123', isAnonymous: true, email: 'demo@rakhicrate.co.uk' };
+    notifyListeners(guestUser);
+    return guestUser;
+  },
+
+  async signInWithEmail(email: string, password: string): Promise<any> {
+    if (isFirebaseConfigured && auth) {
+      try {
+        const credential = await signInWithEmailAndPassword(auth, email, password);
+        return credential.user;
+      } catch (error: any) {
+        throw new Error(error.message || 'Firebase authentication failed');
+      }
+    }
+
+    // Local Sandbox auth
+    const users = getLocalRegisteredUsers();
+    const matched = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (!matched) {
+      throw new Error('User not found. Please check your credentials or create a new account.');
+    }
+    if (matched.password !== password) {
+      throw new Error('Incorrect password. Please try again.');
+    }
+
+    const sessionUser = { uid: matched.uid, isAnonymous: false, email: matched.email };
+    notifyListeners(sessionUser);
+    return sessionUser;
+  },
+
+  async signUpWithEmail(email: string, password: string): Promise<any> {
+    if (isFirebaseConfigured && auth) {
+      try {
+        const credential = await createUserWithEmailAndPassword(auth, email, password);
+        return credential.user;
+      } catch (error: any) {
+        throw new Error(error.message || 'Failed to create user account on Firebase');
+      }
+    }
+
+    // Local Sandbox auth
+    const users = getLocalRegisteredUsers();
+    const exists = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (exists) {
+      throw new Error('An account with this email address already exists.');
+    }
+
+    const newUser = {
+      uid: 'user-' + Math.random().toString(36).substr(2, 9),
+      email: email,
+      password: password
+    };
+    users.push(newUser);
+    saveLocalRegisteredUsers(users);
+
+    const sessionUser = { uid: newUser.uid, isAnonymous: false, email: newUser.email };
+    notifyListeners(sessionUser);
+    return sessionUser;
   },
 
   async signOut(): Promise<void> {
     if (isFirebaseConfigured && auth) {
-      await signOut(auth);
+      try {
+        await signOut(auth);
+      } catch (e) {
+        console.error(e);
+      }
     }
+    // Set back to a clean guest account
+    const guestUser = { uid: 'demo-user-123', isAnonymous: true, email: 'demo@rakhicrate.co.uk' };
+    notifyListeners(guestUser);
   },
 
   onAuthStateChanged(callback: (user: any) => void): () => void {
@@ -76,13 +178,28 @@ export const dbService = {
         if (user) {
           callback(user);
         } else {
-          callback({ uid: 'demo-user-123', isAnonymous: true, email: 'demo@rakhicrate.co.uk' });
+          // If no user on firebase auth, fallback to local session or default guest
+          const stored = localStorage.getItem('rakhi_crate_session');
+          if (stored) {
+            callback(JSON.parse(stored));
+          } else {
+            callback({ uid: 'demo-user-123', isAnonymous: true, email: 'demo@rakhicrate.co.uk' });
+          }
         }
       });
     }
-    // Simulate immediately
-    callback({ uid: 'demo-user-123', isAnonymous: true, email: 'demo@rakhicrate.co.uk' });
-    return () => {};
+    
+    // Local session observer
+    listeners.push(callback);
+    // Fire immediately with active local user
+    callback(localUser || { uid: 'demo-user-123', isAnonymous: true, email: 'demo@rakhicrate.co.uk' });
+    
+    return () => {
+      const idx = listeners.indexOf(callback);
+      if (idx !== -1) {
+        listeners.splice(idx, 1);
+      }
+    };
   },
 
   // Orders

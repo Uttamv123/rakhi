@@ -26,9 +26,10 @@ interface CheckoutDrawerProps {
   onOrderCompleted: (order: Order) => void;
   onClearCart: () => void;
   userEmail?: string;
+  userId?: string;
 }
 
-export default function CheckoutDrawer({ cart, onClose, onOrderCompleted, onClearCart, userEmail }: CheckoutDrawerProps) {
+export default function CheckoutDrawer({ cart, onClose, onOrderCompleted, onClearCart, userEmail, userId }: CheckoutDrawerProps) {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1); // 1: Shipping, 2: Payment, 3: Processing, 4: Receipt
   
   // Shipping form state
@@ -129,6 +130,7 @@ export default function CheckoutDrawer({ cart, onClose, onOrderCompleted, onClea
       
       const newOrder: Order = {
         id: orderId,
+        userId: userId,
         createdAt: timestamp,
         items: [...cart],
         shipping: {
