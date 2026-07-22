@@ -19,6 +19,7 @@ import {
   DollarSign
 } from 'lucide-react';
 import { CartItem, ShippingDetails, Order } from '../types';
+import { useCurrency } from '../context/CurrencyContext';
 
 interface CheckoutDrawerProps {
   cart: CartItem[];
@@ -30,6 +31,7 @@ interface CheckoutDrawerProps {
 }
 
 export default function CheckoutDrawer({ cart, onClose, onOrderCompleted, onClearCart, userEmail, userId }: CheckoutDrawerProps) {
+  const { formatPrice } = useCurrency();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1); // 1: Shipping, 2: Payment, 3: Processing, 4: Receipt
   
   // Shipping form state
@@ -592,7 +594,7 @@ export default function CheckoutDrawer({ cart, onClose, onOrderCompleted, onClea
                   </div>
                   <div>
                     <span className="text-[10px] uppercase text-charcoal-text/50 block font-bold font-mono">Amount Paid</span>
-                    <span className="font-semibold text-primary font-mono font-bold">£{generatedOrder.amount.toFixed(2)}</span>
+                    <span className="font-semibold text-primary font-mono font-bold">{formatPrice(generatedOrder.amount)}</span>
                   </div>
                 </div>
 
@@ -620,11 +622,11 @@ export default function CheckoutDrawer({ cart, onClose, onOrderCompleted, onClea
             <div className="space-y-1.5 text-xs text-charcoal-text/80 font-sans">
               <div className="flex justify-between">
                 <span>Gift Items Total ({cart.reduce((s, i) => s + i.quantity, 0)}):</span>
-                <span className="font-mono">£{cartTotal.toFixed(2)}</span>
+                <span className="font-mono">{formatPrice(cartTotal)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Royal Mail Express Shipping:</span>
-                <span className="font-mono">{shippingFee === 0 ? "FREE" : `£${shippingFee.toFixed(2)}`}</span>
+                <span className="font-mono">{shippingFee === 0 ? "FREE" : formatPrice(shippingFee)}</span>
               </div>
               <div className="flex justify-between text-emerald-700 font-bold">
                 <span>UK Customs Duty &amp; Duties:</span>
@@ -632,7 +634,7 @@ export default function CheckoutDrawer({ cart, onClose, onOrderCompleted, onClea
               </div>
               <div className="flex justify-between text-base font-bold text-primary pt-2 border-t border-dashed border-stone-200/60">
                 <span>Grand Total:</span>
-                <span className="font-mono text-lg text-primary">£{grandTotal.toFixed(2)}</span>
+                <span className="font-mono text-lg text-primary">{formatPrice(grandTotal)}</span>
               </div>
             </div>
 
@@ -660,7 +662,7 @@ export default function CheckoutDrawer({ cart, onClose, onOrderCompleted, onClea
                     onClick={handleProcessCheckout}
                     className="bg-primary text-white py-3 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-primary/95 transition-all shadow-md flex items-center justify-center gap-1 cursor-pointer"
                   >
-                    Pay £{grandTotal.toFixed(2)} <Lock className="w-3.5 h-3.5 text-white" />
+                    Pay {formatPrice(grandTotal)} <Lock className="w-3.5 h-3.5 text-white" />
                   </button>
                 </div>
               )}
@@ -690,7 +692,7 @@ export default function CheckoutDrawer({ cart, onClose, onOrderCompleted, onClea
 
               <form onSubmit={submitPayPalMockLogin} className="space-y-4">
                 <p className="text-xs text-charcoal-text/80 leading-relaxed font-sans">
-                  Log in to your PayPal developer sandbox account to authorize this gift transaction of <span className="font-bold text-primary">£{grandTotal.toFixed(2)}</span>.
+                  Log in to your PayPal developer sandbox account to authorize this gift transaction of <span className="font-bold text-primary">{formatPrice(grandTotal)}</span>.
                 </p>
 
                 <div>

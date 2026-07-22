@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { CRATE_BOX_STYLES, RAKHI_THREADS, PREMIUM_TREATS, CARD_TEMPLATES } from '../data';
 import { CustomCrate, CrateBoxStyle, RakhiThread, PremiumTreat, MessageCardTemplate, PersonalizedCard, CartItem } from '../types';
+import { useCurrency } from '../context/CurrencyContext';
 
 interface CustomizeCrateBuilderProps {
   onCrateAdded: (cartItem: CartItem) => void;
@@ -27,6 +28,7 @@ interface CustomizeCrateBuilderProps {
 }
 
 export default function CustomizeCrateBuilder({ onCrateAdded, onClose, initialRelationFilter = 'all' }: CustomizeCrateBuilderProps) {
+  const { formatPrice } = useCurrency();
   const [activeTab, setActiveTab] = useState<'box' | 'rakhi' | 'treats' | 'card'>('box');
   const [relationFilter, setRelationFilter] = useState<'all' | 'brother' | 'kids' | 'bhaiya-bhabhi'>(initialRelationFilter);
   
@@ -206,15 +208,15 @@ export default function CustomizeCrateBuilder({ onCrateAdded, onClose, initialRe
               <div className="space-y-1.5 text-xs text-charcoal-text/80 font-sans">
                 <div className="flex justify-between">
                   <span>Premium Casing:</span>
-                  <span className="font-mono font-semibold">£{boxPrice.toFixed(2)}</span>
+                  <span className="font-mono font-semibold">{formatPrice(boxPrice)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Selected Rakhi Thread:</span>
-                  <span className="font-mono font-semibold">£{rakhiPrice.toFixed(2)}</span>
+                  <span className="font-mono font-semibold">{formatPrice(rakhiPrice)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Gourmet Treats ({selectedTreats.length}):</span>
-                  <span className="font-mono font-semibold">£{treatsPrice.toFixed(2)}</span>
+                  <span className="font-mono font-semibold">{formatPrice(treatsPrice)}</span>
                 </div>
                 <div className="flex justify-between text-primary font-medium">
                   <span>Personalized Letter Card:</span>
@@ -222,7 +224,7 @@ export default function CustomizeCrateBuilder({ onCrateAdded, onClose, initialRe
                 </div>
                 <div className="flex justify-between font-bold text-sm text-primary pt-2 border-t border-dashed border-stone-200/60 font-mono">
                   <span>Custom Crate Total:</span>
-                  <span>£{totalPrice.toFixed(2)}</span>
+                  <span>{formatPrice(totalPrice)}</span>
                 </div>
               </div>
             </div>
@@ -305,7 +307,7 @@ export default function CustomizeCrateBuilder({ onCrateAdded, onClose, initialRe
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-baseline gap-2">
                             <h4 className="font-bold text-sm text-charcoal-text truncate font-sans">{box.name}</h4>
-                            <span className="font-mono text-xs font-bold text-primary shrink-0">£{box.price.toFixed(2)}</span>
+                            <span className="font-mono text-xs font-bold text-primary shrink-0">{formatPrice(box.price)}</span>
                           </div>
                           <p className="text-xs text-charcoal-text/70 mt-1 leading-relaxed font-sans">{box.description}</p>
                         </div>
@@ -417,7 +419,7 @@ export default function CustomizeCrateBuilder({ onCrateAdded, onClose, initialRe
                         <div>
                           <div className="flex justify-between items-baseline gap-1">
                             <h4 className="font-bold text-xs text-charcoal-text truncate font-sans">{rakhi.name}</h4>
-                            <span className="font-mono text-xs font-bold text-primary shrink-0">£{rakhi.price.toFixed(2)}</span>
+                            <span className="font-mono text-xs font-bold text-primary shrink-0">{formatPrice(rakhi.price)}</span>
                           </div>
                           <p className="text-[10px] text-charcoal-text/70 mt-1 line-clamp-2 leading-relaxed font-sans">{rakhi.description}</p>
                         </div>
@@ -463,7 +465,7 @@ export default function CustomizeCrateBuilder({ onCrateAdded, onClose, initialRe
                           <div className="flex-1 min-w-0 font-sans">
                             <div className="flex justify-between items-baseline gap-1">
                               <h4 className="font-bold text-xs text-charcoal-text truncate">{treat.name}</h4>
-                              <span className="font-mono text-xs font-bold text-primary shrink-0">£{treat.price.toFixed(2)}</span>
+                              <span className="font-mono text-xs font-bold text-primary shrink-0">{formatPrice(treat.price)}</span>
                             </div>
                             <p className="text-[10px] text-charcoal-text/70 line-clamp-1 leading-relaxed mt-0.5">{treat.description}</p>
                             <span className="inline-block mt-1 text-[9px] bg-warm-cream text-charcoal-text/80 border border-stone-200/40 font-mono px-1.5 py-0.5 rounded-lg font-bold uppercase">
@@ -590,7 +592,7 @@ export default function CustomizeCrateBuilder({ onCrateAdded, onClose, initialRe
             <div className="border-t border-stone-100 p-6 bg-warm-cream flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0 rounded-none">
               <div className="text-center sm:text-left font-sans">
                 <span className="text-[10px] text-charcoal-text/50 block uppercase font-mono font-bold">Customized Total Crate Price</span>
-                <span className="text-2xl font-bold text-primary font-serif">£{totalPrice.toFixed(2)}</span>
+                <span className="text-2xl font-bold text-primary font-serif">{formatPrice(totalPrice)}</span>
               </div>
               <div className="flex gap-2 w-full sm:w-auto font-mono">
                 {activeTab !== 'card' ? (

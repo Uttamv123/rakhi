@@ -41,8 +41,10 @@ import { HERO_IMAGES, RELATION_IMAGES, PANTRY_IMAGES, PRE_CURATED_GIFTS, STANDAL
 import { CartItem, Order, SimulatedEmail, StandaloneThreadItem } from './types';
 import { dbService } from './dbService';
 import { isFirebaseConfigured } from './firebase';
+import { useCurrency } from './context/CurrencyContext';
 
 export default function App() {
+  const { currency, setCurrency, formatPrice, convertPrice, currentCurrencyConfig, CURRENCIES } = useCurrency();
   const [isVerified, setIsVerified] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -371,6 +373,25 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-6">
+            {/* Dynamic Currency Hub Selector */}
+            <div className="relative inline-block text-left" title="Select Currency">
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value as any)}
+                className="appearance-none bg-stone-50 hover:bg-stone-100 px-3 py-2 pr-8 rounded-lg border border-stone-200 text-stone-600 font-mono text-xs font-bold transition-all cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-primary/40"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%234a4a4a' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' class='lucide lucide-chevron-down' viewBox='0 0 24 24'><path d='m6 9 6 6 6-6'/></svg>")`,
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 8px center',
+                  backgroundSize: '12px'
+                }}
+              >
+                <option value="INR">INR (₹)</option>
+                <option value="USD">USD ($)</option>
+                <option value="AED">AED (د.إ)</option>
+              </select>
+            </div>
+
             <button 
               onClick={() => setShowTracker(true)}
               className="text-stone-600 hover:text-primary transition-colors flex items-center gap-1.5 cursor-pointer bg-transparent border-none outline-hidden"
@@ -619,7 +640,7 @@ export default function App() {
                     <div className="space-y-2">
                       <div className="flex justify-between items-baseline gap-2">
                         <h3 className="font-serif text-base font-black italic text-charcoal-text leading-tight">{gift.name}</h3>
-                        <span className="font-mono text-base font-bold text-primary shrink-0 font-sans">£{gift.price.toFixed(2)}</span>
+                        <span className="font-mono text-base font-bold text-primary shrink-0 font-sans">{formatPrice(gift.price)}</span>
                       </div>
                       <p className="text-xs text-charcoal-text/70 leading-relaxed line-clamp-3 font-sans">{gift.description}</p>
                     </div>
@@ -703,7 +724,7 @@ export default function App() {
                       : 'bg-white text-stone-600 border-stone-200 hover:border-stone-300'
                   }`}
                 >
-                  Normal Threads (£3.49 - £5.99)
+                  Normal Threads ({formatPrice(3.49)} - {formatPrice(5.99)})
                 </button>
                 <button
                   type="button"
@@ -714,7 +735,7 @@ export default function App() {
                       : 'bg-white text-stone-600 border-stone-200 hover:border-stone-300'
                   }`}
                 >
-                  Premium Sets (£14.99 - £23.50)
+                  Premium Sets ({formatPrice(14.99)} - {formatPrice(23.50)})
                 </button>
               </div>
             </div>
@@ -753,7 +774,7 @@ export default function App() {
                     <div className="space-y-2">
                       <div className="flex justify-between items-start gap-2">
                         <h3 className="font-serif text-base font-black italic text-charcoal-text leading-tight">{thread.name}</h3>
-                        <span className="font-mono text-base font-black text-primary shrink-0">£{thread.price.toFixed(2)}</span>
+                        <span className="font-mono text-base font-black text-primary shrink-0">{formatPrice(thread.price)}</span>
                       </div>
                       <p className="text-xs text-charcoal-text/75 leading-relaxed font-sans">{thread.description}</p>
                     </div>
@@ -1318,7 +1339,7 @@ export default function App() {
                         )}
 
                         <div className="flex justify-between items-center pt-2">
-                          <span className="font-mono text-xs font-bold text-primary">£{(item.price * item.quantity).toFixed(2)}</span>
+                          <span className="font-mono text-xs font-bold text-primary">{formatPrice(item.price * item.quantity)}</span>
                           
                           <div className="flex items-center border border-stone-200 bg-white rounded-lg">
                             <button onClick={() => handleUpdateCartQty(item.id, -1)} className="p-1 hover:bg-stone-50 text-stone-500 hover:text-stone-700 transition-colors cursor-pointer">
@@ -1342,7 +1363,7 @@ export default function App() {
                   <div className="flex justify-between items-baseline">
                     <span className="text-xs text-charcoal-text/60 font-bold uppercase tracking-widest">Subtotal:</span>
                     <span className="text-xl font-bold text-primary">
-                      £{cart.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2)}
+                      {formatPrice(cart.reduce((sum, item) => sum + (item.price * item.quantity), 0))}
                     </span>
                   </div>
                   <button
@@ -1352,7 +1373,7 @@ export default function App() {
                     Secure Checkout <Lock className="w-3.5 h-3.5 text-white" />
                   </button>
                   <p className="text-[10px] text-center text-charcoal-text/50 leading-normal font-sans">
-                    Free shipping on orders over £45. Duty is fully pre-cleared for UK ports.
+                    Free shipping on orders over {formatPrice(45)}. Duty is fully pre-cleared for UK ports.
                   </p>
                 </div>
               )}

@@ -23,6 +23,7 @@ import {
   X
 } from 'lucide-react';
 import { Order, SimulatedEmail } from '../types';
+import { useCurrency } from '../context/CurrencyContext';
 
 interface OrderTrackerProps {
   isOpen: boolean;
@@ -43,6 +44,7 @@ export default function OrderTracker({
   emails, 
   onMarkEmailRead 
 }: OrderTrackerProps) {
+  const { formatPrice } = useCurrency();
   const [searchId, setSearchId] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [activeSubTab, setActiveSubTab] = useState<'timeline' | 'emails'>('timeline');
@@ -135,7 +137,7 @@ export default function OrderTracker({
   };
 
   const generateEmailHtml = (status: Order['status'], order: Order) => {
-    const formattedAmount = `£${order.amount.toFixed(2)}`;
+    const formattedAmount = formatPrice(order.amount);
     const cardMsg = order.items[0]?.details?.card;
     const itemsDescription = order.items.map(item => `
       <div style="padding: 10px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
@@ -147,7 +149,7 @@ export default function OrderTracker({
             ${item.details.treatsNames && item.details.treatsNames.length > 0 ? `<br/>Treats: ${item.details.treatsNames.join(', ')}` : ''}
           </div>
         </div>
-        <span style="font-family: monospace; font-weight: bold;">£${(item.price * item.quantity).toFixed(2)}</span>
+        <span style="font-family: monospace; font-weight: bold;">${formatPrice(item.price * item.quantity)}</span>
       </div>
     `).join('');
 

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { dbService } from '../dbService';
 import { Order, CartItem } from '../types';
+import { useCurrency } from '../context/CurrencyContext';
 
 interface UserProfileDrawerProps {
   isOpen: boolean;
@@ -38,6 +39,7 @@ export default function UserProfileDrawer({
   onAddToCart,
   onOpenCart
 }: UserProfileDrawerProps) {
+  const { formatPrice } = useCurrency();
   // Auth view: 'signin' | 'signup'
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
@@ -397,7 +399,7 @@ export default function UserProfileDrawer({
                                   {/* Individual quick add button */}
                                   <div className="pt-1 flex justify-between items-center">
                                     <span className="font-mono text-xs font-bold text-stone-700">
-                                      £{(item.price * item.quantity).toFixed(2)}
+                                      {formatPrice(item.price * item.quantity)}
                                     </span>
                                     <button 
                                       onClick={() => handleReorderItem(item)}
