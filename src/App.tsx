@@ -26,7 +26,8 @@ import {
   Bookmark,
   MapPin,
   FileText,
-  Database
+  Database,
+  ChevronUp
 } from 'lucide-react';
 
 import AgeVerificationModal from './components/AgeVerificationModal';
@@ -36,9 +37,11 @@ import OrderTracker from './components/OrderTracker';
 import PersonalizeCardModal from './components/PersonalizeCardModal';
 import DbControlCenter from './components/DbControlCenter';
 import UserProfileDrawer from './components/UserProfileDrawer';
+import FAQSection from './components/FAQSection';
+import SearchBar from './components/SearchBar';
 
 import { HERO_IMAGES, RELATION_IMAGES, PANTRY_IMAGES, PRE_CURATED_GIFTS, STANDALONE_THREADS } from './data';
-import { CartItem, Order, SimulatedEmail, StandaloneThreadItem } from './types';
+import { CartItem, Order, SimulatedEmail, StandaloneThreadItem, WishlistItem } from './types';
 import { dbService } from './dbService';
 import { isFirebaseConfigured } from './firebase';
 import { useCurrency } from './context/CurrencyContext';
@@ -47,6 +50,63 @@ export default function App() {
   const { currency, setCurrency, formatPrice, convertPrice, currentCurrencyConfig, CURRENCIES } = useCurrency();
   const [isVerified, setIsVerified] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
+  
+  // Wishlist persistent collection state
+  const [wishlist, setWishlist] = useState<WishlistItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('rakhi_crate_wishlist');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('rakhi_crate_wishlist', JSON.stringify(wishlist));
+    } catch (err) {
+      console.error('Failed to save wishlist:', err);
+    }
+  }, [wishlist]);
+
+  const handleToggleWishlist = (item: WishlistItem) => {
+    setWishlist((prev) => {
+      const exists = prev.some((w) => w.id === item.id);
+      if (exists) {
+        return prev.filter((w) => w.id !== item.id);
+      } else {
+        return [...prev, item];
+      }
+    });
+  };
+
+  const handleRemoveWishlist = (id: string) => {
+    setWishlist((prev) => prev.filter((w) => w.id !== id));
+  };
+
+  const isWishlisted = (id: string) => {
+    return wishlist.some((w) => w.id === id);
+  };
+
+  // Floating Scroll-to-Top button state
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 400) {
+        setShowScrollTop(true);
+      } else {
+        setShowScrollTop(false);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [showCrateBuilder, setShowCrateBuilder] = useState(false);
   const [crateBuilderInitialFilter, setCrateBuilderInitialFilter] = useState<'all' | 'brother' | 'kids' | 'bhaiya-bhabhi'>('all');
@@ -338,54 +398,60 @@ export default function App() {
       {/* Age Verification Overlay Gate */}
       <AgeVerificationModal onVerified={() => setIsVerified(true)} />
 
-      {/* FIXED TOP NAVIGATION */}
-      <header className="fixed top-0 w-full z-40 bg-white/95 backdrop-blur-md shadow-[0px_4px_20px_rgba(0,0,0,0.05)] h-20 flex items-center border-b border-stone-100">
-        <div className="flex justify-between items-center px-margin-mobile md:px-gutter max-w-container-max mx-auto w-full">
+      {/* FIXED TOP NAVIGATION WITH ORGANIZED 2-TIER LAYOUT */}
+      <header className="fixed top-0 w-full z-40 bg-white/95 backdrop-blur-md shadow-[0px_4px_20px_rgba(0,0,0,0.06)] border-b border-stone-200/80">
+        
+        {/* TOP ANNOUNCEMENT RIBBON */}
+        <div className="bg-primary text-white text-[10px] sm:text-[11px] font-mono py-1.5 px-4 text-center border-b border-primary/30 flex items-center justify-center gap-3 sm:gap-6 overflow-x-auto scrollbar-none whitespace-nowrap">
+          <span className="flex items-center gap-1.5 font-bold">
+            <Truck className="w-3.5 h-3.5 text-secondary-gold" /> Guaranteed Express UK Delivery (24–72 Hrs)
+          </span>
+          <span className="hidden sm:inline text-white/30">•</span>
+          <span className="hidden sm:flex items-center gap-1 font-medium">
+            <Sparkles className="w-3 h-3 text-secondary-gold" /> Complimentary Personalized Calligraphy Gift Card
+          </span>
+          <span className="hidden lg:inline text-white/30">•</span>
+          <span className="hidden lg:flex items-center gap-1 font-medium">
+            <Star className="w-3 h-3 text-secondary-gold fill-secondary-gold stroke-[0]" /> Rated 4.9/5 by 12,000+ NRI Siblings
+          </span>
+        </div>
+
+        {/* ROW 1: Logo, Search Bar & Main Action Controls */}
+        <div className="h-16 px-margin-mobile md:px-gutter max-w-container-max mx-auto w-full flex items-center justify-between gap-2 sm:gap-4 md:gap-6">
           
-          <div className="flex items-center gap-10">
-            <a className="font-serif text-2xl font-black italic text-primary tracking-tight" href="#">
-              RAKHI CRATE
-            </a>
-            <nav className="hidden md:flex gap-8">
-              <button 
-                onClick={() => setShowCrateBuilder(true)} 
-                className="text-primary border-b-2 border-primary pb-1 font-bold text-xs uppercase tracking-widest cursor-pointer"
-              >
-                Crate Customizer
-              </button>
-              <a href="#pre-curated-racks" className="text-stone-600 hover:text-primary transition-colors text-xs font-bold uppercase tracking-widest">
-                Festive Hampers
-              </a>
-              <a href="#threads-gallery" className="text-stone-600 hover:text-primary transition-colors text-xs font-bold uppercase tracking-widest">
-                Sacred Threads
-              </a>
-              <a href="#festive-pantry-rack" className="text-stone-600 hover:text-primary transition-colors text-xs font-bold uppercase tracking-widest">
-                Gourmet Sweets
-              </a>
-              <button 
-                onClick={() => setShowTracker(true)}
-                className="text-stone-600 hover:text-primary transition-colors text-xs font-bold uppercase tracking-widest flex items-center gap-1.5 cursor-pointer bg-transparent border-none outline-hidden"
-              >
-                Shipment Tracker
-                <span className="w-2 h-2 rounded-full bg-primary block animate-pulse" />
-              </button>
-            </nav>
+          {/* Brand Logo */}
+          <a className="font-serif text-xl sm:text-2xl font-black italic text-primary tracking-tight shrink-0 flex items-center gap-1.5" href="#">
+            RAKHI CRATE
+            <span className="hidden md:inline-block font-mono text-[9px] font-bold text-primary/80 bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded uppercase tracking-wider not-italic">
+              🇬🇧 UK Hub
+            </span>
+          </a>
+
+          {/* Center Search Bar */}
+          <div className="flex-1 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg min-w-0">
+            <SearchBar 
+              formatPrice={formatPrice}
+              onAddToCart={handleAddToCart}
+              onOpenCrateBuilder={() => setShowCrateBuilder(true)}
+            />
           </div>
 
-          <div className="flex items-center gap-6">
+          {/* Right Action Controls */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {/* Dynamic Currency Hub Selector */}
             <div className="relative inline-block text-left" title="Select Currency">
               <select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value as any)}
-                className="appearance-none bg-stone-50 hover:bg-stone-100 px-3 py-2 pr-8 rounded-lg border border-stone-200 text-stone-600 font-mono text-xs font-bold transition-all cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-primary/40"
+                className="appearance-none bg-stone-50 hover:bg-stone-100 px-2 sm:px-3 py-1.5 rounded-lg border border-stone-200 text-stone-600 font-mono text-xs font-bold transition-all cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-primary/40"
                 style={{
                   backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%234a4a4a' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' class='lucide lucide-chevron-down' viewBox='0 0 24 24'><path d='m6 9 6 6 6-6'/></svg>")`,
                   backgroundRepeat: 'no-repeat',
-                  backgroundPosition: 'right 8px center',
+                  backgroundPosition: 'right 6px center',
                   backgroundSize: '12px'
                 }}
               >
+                <option value="GBP">GBP (£)</option>
                 <option value="INR">INR (₹)</option>
                 <option value="USD">USD ($)</option>
                 <option value="AED">AED (د.إ)</option>
@@ -394,19 +460,35 @@ export default function App() {
 
             <button 
               onClick={() => setShowTracker(true)}
-              className="text-stone-600 hover:text-primary transition-colors flex items-center gap-1.5 cursor-pointer bg-transparent border-none outline-hidden"
+              className="hidden sm:flex text-stone-600 hover:text-primary transition-colors items-center gap-1.5 cursor-pointer bg-stone-50 hover:bg-stone-100 px-2.5 py-1.5 rounded-lg border border-stone-200/60"
+              title="Live Courier Route Tracker"
             >
-              <Truck className="w-5 h-5 text-primary" />
-              <span className="hidden sm:inline text-xs font-bold font-mono">UK Courier</span>
+              <Truck className="w-4 h-4 text-primary" />
+              <span className="text-xs font-bold font-mono">Tracker</span>
             </button>
             
+            {/* Wishlist Favorites Button */}
             <button 
               onClick={() => setShowProfile(true)}
-              className="text-stone-600 hover:text-primary transition-colors cursor-pointer relative flex items-center gap-1 bg-stone-50 hover:bg-stone-100 p-2 rounded-lg border border-stone-200/50"
-              title="Customer Profile & Order History"
+              className="text-stone-600 hover:text-primary transition-colors cursor-pointer relative flex items-center gap-1 bg-stone-50 hover:bg-stone-100 p-2 rounded-lg border border-stone-200/60"
+              title="Saved Favorites & Wishlist"
+              id="wishlist-btn"
+            >
+              <Heart className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors ${wishlist.length > 0 ? 'fill-primary text-primary' : ''}`} />
+              {wishlist.length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 bg-primary text-white text-[9px] font-mono font-bold w-4.5 h-4.5 rounded-full flex items-center justify-center border border-white shadow-xs">
+                  {wishlist.length}
+                </span>
+              )}
+            </button>
+
+            <button 
+              onClick={() => setShowProfile(true)}
+              className="text-stone-600 hover:text-primary transition-colors cursor-pointer relative flex items-center gap-1 bg-stone-50 hover:bg-stone-100 p-2 rounded-lg border border-stone-200/60"
+              title="Customer Profile & Orders"
               id="customer-profile-btn"
             >
-              <User className="w-5 h-5" />
+              <User className="w-4 h-4 sm:w-5 sm:h-5" />
               {currentUser && !currentUser.isAnonymous && (
                 <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-emerald-500 rounded-full border border-white" />
               )}
@@ -414,7 +496,7 @@ export default function App() {
             
             <button 
               onClick={() => setIsCartOpen(true)}
-              className="relative flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 px-3.5 py-2 rounded-lg transition-all text-primary cursor-pointer border border-primary/20"
+              className="relative flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 sm:py-2 rounded-lg transition-all cursor-pointer border border-primary/20"
               id="open-cart-btn"
             >
               <ShoppingBag className="w-4 h-4" />
@@ -423,10 +505,77 @@ export default function App() {
           </div>
 
         </div>
+
+        {/* ROW 2: Category & Navigation Links Strip */}
+        <div className="bg-warm-cream/80 border-t border-stone-200/60 py-2 px-margin-mobile md:px-gutter">
+          <div className="max-w-container-max mx-auto flex items-center justify-start md:justify-center overflow-x-auto scrollbar-none whitespace-nowrap gap-3 sm:gap-6 text-xs font-bold font-sans">
+            
+            <button 
+              onClick={() => setShowCrateBuilder(true)} 
+              className="bg-primary text-white hover:bg-primary/90 px-3 py-1 rounded-full text-[11px] sm:text-xs font-mono font-bold uppercase tracking-wider cursor-pointer transition-all flex items-center gap-1.5 shrink-0 shadow-xs"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-secondary-gold" />
+              Crate Customizer
+            </button>
+
+            <span className="text-stone-300 hidden sm:inline">•</span>
+
+            <a 
+              href="#pre-curated-racks" 
+              className="text-charcoal-text/85 hover:text-primary transition-colors text-[11px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0"
+            >
+              <Gift className="w-3.5 h-3.5 text-primary" />
+              Festive Hampers
+            </a>
+
+            <span className="text-stone-300 hidden sm:inline">•</span>
+
+            <a 
+              href="#threads-gallery" 
+              className="text-charcoal-text/85 hover:text-primary transition-colors text-[11px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0"
+            >
+              <Heart className="w-3.5 h-3.5 text-primary" />
+              Sacred Threads
+            </a>
+
+            <span className="text-stone-300 hidden sm:inline">•</span>
+
+            <a 
+              href="#festive-pantry-rack" 
+              className="text-charcoal-text/85 hover:text-primary transition-colors text-[11px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0"
+            >
+              <Package className="w-3.5 h-3.5 text-primary" />
+              Gourmet Sweets
+            </a>
+
+            <span className="text-stone-300 hidden sm:inline">•</span>
+
+            <a 
+              href="#faq-section" 
+              className="text-charcoal-text/85 hover:text-primary transition-colors text-[11px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0"
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-primary" />
+              FAQ
+            </a>
+
+            <span className="text-stone-300 hidden sm:inline">•</span>
+
+            <button 
+              onClick={() => setShowTracker(true)}
+              className="text-charcoal-text/85 hover:text-primary transition-colors text-[11px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer bg-transparent border-none outline-hidden shrink-0"
+            >
+              <Truck className="w-3.5 h-3.5 text-primary" />
+              Shipment Tracker
+              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
+            </button>
+
+          </div>
+        </div>
+
       </header>
 
       {/* HERO SECTION */}
-      <main className="pt-20">
+      <main className="pt-36">
         <section className="relative h-[85vh] min-h-[580px] flex items-center overflow-hidden bg-warm-cream">
           <div className="absolute inset-0 opacity-10">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-secondary-gold/20 via-transparent to-transparent" />
@@ -622,21 +771,69 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {PRE_CURATED_GIFTS.map((gift) => (
-                <div 
-                  key={gift.id}
-                  className="bg-white rounded-2xl border border-stone-100 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between"
-                >
-                  <div className="relative aspect-video bg-warm-cream overflow-hidden">
-                    <img src={gift.image} alt={gift.name} className="w-full h-full object-cover hover:scale-[1.03] transition-all" />
-                    {gift.badge && (
-                      <span className="absolute top-3 left-3 bg-primary text-white font-black text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-md font-mono">
-                        {gift.badge}
-                      </span>
-                    )}
-                  </div>
+              {PRE_CURATED_GIFTS.map((gift) => {
+                const isWish = isWishlisted(`precurated-${gift.id}`);
+                const hamperCartItem: CartItem = {
+                  id: `precurated-${gift.id}`,
+                  type: 'pre-curated',
+                  title: gift.name,
+                  price: gift.price,
+                  image: gift.image,
+                  description: gift.description,
+                  details: {
+                    crateBoxName: 'Signature Crate',
+                    rakhiName: gift.rakhiName,
+                    treatsNames: [gift.sweetsName],
+                    card: {
+                      templateId: 'mandala-royal',
+                      toName: '',
+                      fromName: '',
+                      message: 'Wishing you a magical and blessed Raksha Bandhan filled with sweetness and beautiful memories!'
+                    }
+                  },
+                  quantity: 1
+                };
 
-                  <div className="p-6 flex-1 flex flex-col justify-between">
+                return (
+                  <div 
+                    key={gift.id}
+                    className="bg-white rounded-2xl border border-stone-100 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between"
+                  >
+                    <div className="relative aspect-video bg-warm-cream overflow-hidden">
+                      <img src={gift.image} alt={gift.name} className="w-full h-full object-cover hover:scale-[1.03] transition-all" />
+                      {gift.badge && (
+                        <span className="absolute top-3 left-3 bg-primary text-white font-black text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-md font-mono">
+                          {gift.badge}
+                        </span>
+                      )}
+
+                      {/* Wishlist Heart Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleWishlist({
+                            id: `precurated-${gift.id}`,
+                            title: gift.name,
+                            price: gift.price,
+                            image: gift.image,
+                            description: gift.description,
+                            category: 'hamper',
+                            cartItem: hamperCartItem
+                          });
+                        }}
+                        className={`absolute top-3 right-3 p-2 rounded-full transition-all cursor-pointer z-10 ${
+                          isWish
+                            ? 'bg-white text-primary shadow-md scale-110'
+                            : 'bg-white/80 hover:bg-white text-stone-600 hover:text-primary backdrop-blur-xs shadow-xs'
+                        }`}
+                        title={isWish ? 'Remove from Wishlist' : 'Add to Wishlist'}
+                      >
+                        <Heart className={`w-4 h-4 ${isWish ? 'fill-primary text-primary' : ''}`} />
+                      </button>
+                    </div>
+
+                    <div className="p-6 flex-1 flex flex-col justify-between">
                     <div className="space-y-2">
                       <div className="flex justify-between items-baseline gap-2">
                         <h3 className="font-serif text-base font-black italic text-charcoal-text leading-tight">{gift.name}</h3>
@@ -687,10 +884,11 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
-        </section>
+        </div>
+      </section>
 
         {/* SACRED THREADS GALLERY */}
         <section className="py-20 bg-warm-cream/30 border-t border-stone-200/60" id="threads-gallery">
@@ -742,34 +940,74 @@ export default function App() {
 
             {/* Threads Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {STANDALONE_THREADS.filter(t => selectedThreadTab === 'all' || t.type === selectedThreadTab).map((thread) => (
-                <div
-                  key={thread.id}
-                  className="bg-white rounded-2xl border border-stone-200/60 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between"
-                >
-                  {/* Image Container with Badge */}
-                  <div className="relative aspect-[4/3] bg-warm-cream overflow-hidden group border-b border-stone-100">
-                    <img
-                      src={thread.image}
-                      alt={thread.name}
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute top-3 left-3 flex gap-1.5 z-10">
-                      <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md font-mono shadow-sm ${
-                        thread.type === 'premium' ? 'bg-primary text-white' : 'bg-stone-800 text-white'
-                      }`}>
-                        {thread.type === 'premium' ? 'Premium Set' : 'Normal Thread'}
-                      </span>
-                      {thread.badge && (
-                        <span className="bg-[#E6C687] text-stone-900 font-bold text-[9px] uppercase tracking-widest px-2 py-1 rounded-md font-mono shadow-sm">
-                          {thread.badge}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+              {STANDALONE_THREADS.filter(t => selectedThreadTab === 'all' || t.type === selectedThreadTab).map((thread) => {
+                const isWish = isWishlisted(`thread-${thread.id}`);
+                const threadCartItem: CartItem = {
+                  id: `thread-${thread.id}`,
+                  type: 'standalone-thread',
+                  title: thread.name,
+                  price: thread.price,
+                  image: thread.image,
+                  description: thread.description,
+                  details: {
+                    rakhiName: thread.name
+                  },
+                  quantity: 1
+                };
 
-                  {/* Body Content */}
+                return (
+                  <div
+                    key={thread.id}
+                    className="bg-white rounded-2xl border border-stone-200/60 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between"
+                  >
+                    {/* Image Container with Badge */}
+                    <div className="relative aspect-[4/3] bg-warm-cream overflow-hidden group border-b border-stone-100">
+                      <img
+                        src={thread.image}
+                        alt={thread.name}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute top-3 left-3 flex gap-1.5 z-10">
+                        <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md font-mono shadow-sm ${
+                          thread.type === 'premium' ? 'bg-primary text-white' : 'bg-stone-800 text-white'
+                        }`}>
+                          {thread.type === 'premium' ? 'Premium Set' : 'Normal Thread'}
+                        </span>
+                        {thread.badge && (
+                          <span className="bg-[#E6C687] text-stone-900 font-bold text-[9px] uppercase tracking-widest px-2 py-1 rounded-md font-mono shadow-sm">
+                            {thread.badge}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Wishlist Heart Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleWishlist({
+                            id: `thread-${thread.id}`,
+                            title: thread.name,
+                            price: thread.price,
+                            image: thread.image,
+                            description: thread.description,
+                            category: 'thread',
+                            cartItem: threadCartItem
+                          });
+                        }}
+                        className={`absolute top-3 right-3 p-2 rounded-full transition-all cursor-pointer z-10 ${
+                          isWish
+                            ? 'bg-white text-primary shadow-md scale-110'
+                            : 'bg-white/80 hover:bg-white text-stone-600 hover:text-primary backdrop-blur-xs shadow-xs'
+                        }`}
+                        title={isWish ? 'Remove from Wishlist' : 'Add to Wishlist'}
+                      >
+                        <Heart className={`w-4 h-4 ${isWish ? 'fill-primary text-primary' : ''}`} />
+                      </button>
+                    </div>
+
+                    {/* Body Content */}
                   <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
                     <div className="space-y-2">
                       <div className="flex justify-between items-start gap-2">
@@ -862,10 +1100,11 @@ export default function App() {
 
                   </div>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
-        </section>
+        </div>
+      </section>
 
         {/* ASYMMETRIC FEATURED GRID (THE FESTIVE PANTRY) */}
         <section className="py-20 bg-site-bg border-t border-stone-100" id="festive-pantry-rack">
@@ -880,16 +1119,16 @@ export default function App() {
             <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-stretch">
               
               {/* Large Feature: Sweets */}
-              <div className="md:col-span-8 group relative rounded-2xl overflow-hidden shadow-sm bg-white border border-stone-100">
+              <div className="md:col-span-8 group relative rounded-2xl overflow-hidden shadow-sm hover:shadow-xl bg-white border border-stone-200/80 hover:border-primary/30 transition-all duration-500">
                 <div className="grid md:grid-cols-2 h-full">
                   <div className="relative overflow-hidden h-64 md:h-full bg-warm-cream">
                     <img 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+                      className="w-full h-full object-cover transform group-hover:scale-108 transition-transform duration-700 ease-out" 
                       alt="Traditional sweets and Rakhi thread platters" 
                       src={PANTRY_IMAGES.sweets}
                     />
                     <div className="absolute top-4 right-4 z-10">
-                      <span className="bg-primary text-white px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-full font-mono">
+                      <span className="bg-primary text-white px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-full font-mono shadow-xs">
                         Local UK Dispatch
                       </span>
                     </div>
@@ -897,14 +1136,14 @@ export default function App() {
                   
                   <div className="p-8 flex flex-col justify-center space-y-4">
                     <span className="text-primary text-xs font-bold uppercase tracking-widest font-mono">Bestseller Range</span>
-                    <h3 className="font-serif text-xl font-black italic text-charcoal-text">Rakhi with Traditional Sweets</h3>
+                    <h3 className="font-serif text-xl font-black italic text-charcoal-text group-hover:text-primary transition-colors">Rakhi with Traditional Sweets</h3>
                     <p className="text-xs text-charcoal-text/70 leading-relaxed font-sans">
                       Freshly prepared artisanal Mithai (Laddoos, Kaju Katli) sealed in protective nitrogen-flushed packages. Delivered within 24-48 hours across the UK. Taste the authentic flavors of home.
                     </p>
                     <div>
                       <button 
                         onClick={() => setShowCrateBuilder(true)}
-                        className="bg-primary text-white px-6 py-3 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-primary/90 transition-all cursor-pointer"
+                        className="bg-primary text-white px-6 py-3 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-primary/90 transition-all cursor-pointer shadow-xs"
                       >
                         Customize Sweets Crate
                       </button>
@@ -919,36 +1158,36 @@ export default function App() {
                 {/* Dry Fruits */}
                 <div 
                   onClick={() => setShowCrateBuilder(true)}
-                  className="flex-1 group relative rounded-2xl overflow-hidden shadow-sm bg-white border border-stone-100 p-4 flex flex-col justify-between cursor-pointer hover:border-primary/30 transition-all"
+                  className="flex-1 group relative rounded-2xl overflow-hidden shadow-sm hover:shadow-xl bg-white border border-stone-200/80 p-4 flex flex-col justify-between cursor-pointer hover:border-primary/40 hover:-translate-y-0.5 transition-all duration-300"
                 >
-                  <div className="h-40 overflow-hidden rounded-xl bg-warm-cream">
+                  <div className="h-40 overflow-hidden rounded-xl bg-warm-cream relative">
                     <img 
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                      className="w-full h-full object-cover transform group-hover:scale-108 transition-transform duration-500 ease-out" 
                       alt="Gourmet nuts and roasted cashews" 
                       src={PANTRY_IMAGES.dryFruits}
                     />
                   </div>
                   <div className="text-center pt-4">
-                    <h4 className="font-serif text-sm font-black italic text-charcoal-text">With Roasted Dry Fruits</h4>
-                    <span className="text-primary text-[10px] font-bold uppercase tracking-widest font-mono mt-1 block">View Range</span>
+                    <h4 className="font-serif text-sm font-black italic text-charcoal-text group-hover:text-primary transition-colors">With Roasted Dry Fruits</h4>
+                    <span className="text-primary text-[10px] font-bold uppercase tracking-widest font-mono mt-1 block">View Range &rarr;</span>
                   </div>
                 </div>
 
                 {/* Chocolates */}
                 <div 
                   onClick={() => setShowCrateBuilder(true)}
-                  className="flex-1 group relative rounded-2xl overflow-hidden shadow-sm bg-white border border-stone-100 p-4 flex flex-col justify-between cursor-pointer hover:border-primary/30 transition-all"
+                  className="flex-1 group relative rounded-2xl overflow-hidden shadow-sm hover:shadow-xl bg-white border border-stone-200/80 p-4 flex flex-col justify-between cursor-pointer hover:border-primary/40 hover:-translate-y-0.5 transition-all duration-300"
                 >
-                  <div className="h-40 overflow-hidden rounded-xl bg-warm-cream">
+                  <div className="h-40 overflow-hidden rounded-xl bg-warm-cream relative">
                     <img 
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                      className="w-full h-full object-cover transform group-hover:scale-108 transition-transform duration-500 ease-out" 
                       alt="Rich artisanal chocolate clusters" 
                       src={PANTRY_IMAGES.chocolates}
                     />
                   </div>
                   <div className="text-center pt-4">
-                    <h4 className="font-serif text-sm font-black italic text-charcoal-text">With Artisanal Chocolates</h4>
-                    <span className="text-primary text-[10px] font-bold uppercase tracking-widest font-mono mt-1 block">View Range</span>
+                    <h4 className="font-serif text-sm font-black italic text-charcoal-text group-hover:text-primary transition-colors">With Artisanal Chocolates</h4>
+                    <span className="text-primary text-[10px] font-bold uppercase tracking-widest font-mono mt-1 block">View Range &rarr;</span>
                   </div>
                 </div>
 
@@ -1175,6 +1414,12 @@ export default function App() {
             </form>
           </div>
         </section>
+
+        {/* FREQUENTLY ASKED QUESTIONS SECTION */}
+        <FAQSection 
+          onOpenCrateBuilder={() => setShowCrateBuilder(true)}
+          onOpenTracker={() => setShowTracker(true)}
+        />
       </main>
 
       {/* FOOTER SECTION */}
@@ -1209,10 +1454,10 @@ export default function App() {
           <div className="space-y-3">
             <h4 className="font-bold text-xs text-primary uppercase tracking-widest font-sans">Customer Support</h4>
             <ul className="space-y-2 text-charcoal-text/75 font-mono text-[11px]">
-              <li><a href="#" className="hover:text-primary transition-colors">Delivery Policy</a></li>
+              <li><a href="#faq-section" className="hover:text-primary transition-colors">Frequently Asked Questions (FAQ)</a></li>
+              <li><a href="#faq-section" className="hover:text-primary transition-colors">UK Express Delivery (24-72 hrs)</a></li>
               <li><button onClick={() => setShowTracker(true)} className="hover:text-primary transition-colors cursor-pointer text-left bg-transparent border-none outline-hidden">Track Shipment Route</button></li>
-              <li><a href="#" className="hover:text-primary transition-colors">PayPal &amp; Stripe Sandboxes</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Our Story &amp; Artisans</a></li>
+              <li><button onClick={() => setShowCrateBuilder(true)} className="hover:text-primary transition-colors cursor-pointer text-left bg-transparent border-none outline-hidden">Custom Thread Requests</button></li>
             </ul>
           </div>
 
@@ -1427,6 +1672,8 @@ export default function App() {
         onClose={() => setShowProfile(false)}
         currentUser={currentUser}
         orders={orders}
+        wishlist={wishlist}
+        onRemoveWishlist={handleRemoveWishlist}
         onAddToCart={handleAddToCart}
         onOpenCart={() => setIsCartOpen(true)}
       />
@@ -1441,6 +1688,23 @@ export default function App() {
         emails={emails}
         onMarkEmailRead={markEmailRead}
       />
+
+      {/* FLOATING SCROLL TO TOP BUTTON */}
+      <AnimatePresence>
+        {showScrollTop && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 20 }}
+            onClick={scrollToTop}
+            className="fixed bottom-6 right-6 z-40 bg-primary hover:bg-primary/90 text-white p-3.5 rounded-full shadow-lg border border-white/20 transition-all cursor-pointer group hover:scale-110 active:scale-95 flex items-center justify-center"
+            title="Scroll to Top"
+            aria-label="Scroll to top"
+          >
+            <ChevronUp className="w-5 h-5 stroke-[2.5] group-hover:-translate-y-0.5 transition-transform" />
+          </motion.button>
+        )}
+      </AnimatePresence>
 
     </div>
   );

@@ -16,10 +16,13 @@ import {
   RotateCcw,
   Sparkles,
   ChevronRight,
-  UserPlus
+  UserPlus,
+  Heart,
+  Trash2,
+  ExternalLink
 } from 'lucide-react';
 import { dbService } from '../dbService';
-import { Order, CartItem } from '../types';
+import { Order, CartItem, WishlistItem } from '../types';
 import { useCurrency } from '../context/CurrencyContext';
 
 interface UserProfileDrawerProps {
@@ -27,6 +30,8 @@ interface UserProfileDrawerProps {
   onClose: () => void;
   currentUser: any;
   orders: Order[];
+  wishlist: WishlistItem[];
+  onRemoveWishlist: (id: string) => void;
   onAddToCart: (item: CartItem) => void;
   onOpenCart: () => void;
 }
@@ -36,10 +41,14 @@ export default function UserProfileDrawer({
   onClose,
   currentUser,
   orders,
+  wishlist = [],
+  onRemoveWishlist,
   onAddToCart,
   onOpenCart
 }: UserProfileDrawerProps) {
   const { formatPrice } = useCurrency();
+  const [activeTab, setActiveTab] = useState<'wishlist' | 'orders'>('wishlist');
+
   // Auth view: 'signin' | 'signup'
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
@@ -310,129 +319,263 @@ export default function UserProfileDrawer({
                 </div>
               )}
 
-              {/* PAST ORDER HISTORY SECTION */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-serif text-base font-black italic text-stone-900 flex items-center gap-2">
-                    <History className="w-4.5 h-4.5 text-primary" /> Past Festive Orders
-                  </h3>
-                  <span className="font-mono text-[10px] font-bold text-stone-500 px-2.5 py-0.5 bg-stone-100 border border-stone-200 rounded-full">
-                    {userOrders.length} {userOrders.length === 1 ? 'Order' : 'Orders'}
-                  </span>
-                </div>
+              {/* TABS SELECTOR: Saved Collection (Wishlist) vs Past Orders */}
+              <div className="flex bg-stone-100 p-1 rounded-xl font-mono text-xs font-bold border border-stone-200/80">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('wishlist')}
+                  className={`flex-1 py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    activeTab === 'wishlist'
+                      ? 'bg-white text-primary shadow-xs'
+                      : 'text-stone-500 hover:text-stone-800'
+                  }`}
+                >
+                  <Heart className={`w-3.5 h-3.5 ${activeTab === 'wishlist' ? 'fill-primary text-primary' : ''}`} />
+                  <span>Wishlist</span>
+                  {wishlist.length > 0 && (
+                    <span className="bg-primary text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full">
+                      {wishlist.length}
+                    </span>
+                  )}
+                </button>
 
-                {userOrders.length === 0 ? (
-                  <div className="bg-white rounded-2xl border border-stone-200/80 p-8 text-center space-y-3">
-                    <div className="w-12 h-12 bg-stone-50 rounded-full flex items-center justify-center mx-auto border border-stone-100 text-stone-400">
-                      <Package className="w-5 h-5" />
-                    </div>
-                    <div className="space-y-1">
-                      <h4 className="font-serif font-black italic text-stone-800 text-xs">No Orders Found</h4>
-                      <p className="text-[11px] text-stone-500 max-w-[240px] mx-auto leading-relaxed">
-                        Create and order a beautiful custom Rakhi wood box or pre-curated festive hamper to start your gifting legacy!
-                      </p>
-                    </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('orders')}
+                  className={`flex-1 py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    activeTab === 'orders'
+                      ? 'bg-white text-primary shadow-xs'
+                      : 'text-stone-500 hover:text-stone-800'
+                  }`}
+                >
+                  <History className="w-3.5 h-3.5" />
+                  <span>Orders</span>
+                  {userOrders.length > 0 && (
+                    <span className="bg-stone-200 text-stone-700 text-[9px] font-bold px-1.5 py-0.2 rounded-full">
+                      {userOrders.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* WISHLIST TAB CONTENT */}
+              {activeTab === 'wishlist' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-serif text-base font-black italic text-stone-900 flex items-center gap-2">
+                      <Heart className="w-4 h-4 text-primary fill-primary/20" /> Saved Favorites
+                    </h3>
+                    <span className="font-mono text-[10px] font-bold text-stone-500 px-2.5 py-0.5 bg-stone-100 border border-stone-200 rounded-full">
+                      {wishlist.length} {wishlist.length === 1 ? 'Item' : 'Items'}
+                    </span>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {userOrders.map((order) => {
-                      // Format date gracefully
-                      const orderDate = order.createdAt;
-                      
-                      // Tracking status styles
-                      const statusMap = {
-                        ordered: { label: 'Secured', bg: 'bg-stone-100 text-stone-700 border-stone-200' },
-                        assembled: { label: 'Assembled', bg: 'bg-amber-50 text-amber-800 border-amber-200/80' },
-                        dispatched: { label: 'Dispatched', bg: 'bg-sky-50 text-sky-800 border-sky-200/80' },
-                        'out-for-delivery': { label: 'Out for Delivery', bg: 'bg-indigo-50 text-indigo-800 border-indigo-200/80' },
-                        delivered: { label: 'Tied & Delivered', bg: 'bg-emerald-50 text-emerald-800 border-emerald-200/80' }
-                      };
 
-                      const currentStatus = statusMap[order.status] || { label: order.status, bg: 'bg-stone-100 text-stone-700 border-stone-200' };
-
-                      return (
-                        <div 
-                          key={order.id} 
-                          className="bg-white rounded-2xl border border-stone-200/80 shadow-xs overflow-hidden"
+                  {wishlist.length === 0 ? (
+                    <div className="bg-white rounded-2xl border border-stone-200/80 p-8 text-center space-y-3">
+                      <div className="w-12 h-12 bg-rose-50 rounded-full flex items-center justify-center mx-auto border border-rose-100 text-primary">
+                        <Heart className="w-5 h-5 fill-primary/20" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="font-serif font-black italic text-stone-800 text-xs">Your Wishlist is Empty</h4>
+                        <p className="text-[11px] text-stone-500 max-w-[250px] mx-auto leading-relaxed font-sans">
+                          Click the heart icon on any sacred thread, hamper crate, or gourmet sweet to save it for your festive collection!
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {wishlist.map((item) => (
+                        <div
+                          key={item.id}
+                          className="bg-white rounded-2xl border border-stone-200/80 p-3.5 shadow-xs flex items-center justify-between gap-3 group hover:border-primary/30 transition-all"
                         >
-                          {/* Order Header */}
-                          <div className="p-4 bg-stone-50 border-b border-stone-100 flex justify-between items-center font-mono">
-                            <div className="space-y-0.5">
-                              <span className="text-[10px] text-stone-400 uppercase tracking-widest block font-bold">Order ID</span>
-                              <span className="text-[11px] text-stone-800 font-bold">{order.id}</span>
-                            </div>
-                            <span className={`text-[9px] uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-full border ${currentStatus.bg}`}>
-                              {currentStatus.label}
-                            </span>
+                          {/* Thumbnail */}
+                          <div className="w-14 h-14 rounded-xl overflow-hidden bg-stone-100 border border-stone-200/80 shrink-0 relative">
+                            <img
+                              src={item.image}
+                              alt={item.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                            />
                           </div>
 
-                          {/* Order items list */}
-                          <div className="p-4 space-y-3.5 divide-y divide-stone-100">
-                            {order.items.map((item, index) => (
-                              <div key={item.id} className={`flex gap-3.5 items-start ${index > 0 ? 'pt-3.5' : ''}`}>
-                                <div className="w-12 h-12 rounded-lg overflow-hidden border border-stone-100 bg-stone-50 shrink-0 relative">
-                                  <img 
-                                    src={item.image} 
-                                    alt={item.title} 
-                                    className="w-full h-full object-cover"
-                                  />
-                                  <span className="absolute -bottom-1 -right-1 bg-stone-900 text-white font-mono text-[9px] font-bold h-4 w-4 rounded-full flex items-center justify-center scale-90 border border-white">
-                                    {item.quantity}
-                                  </span>
-                                </div>
-                                <div className="space-y-1 flex-1 min-w-0">
-                                  <h5 className="font-serif font-black italic text-xs text-stone-800 truncate leading-snug">
-                                    {item.title}
-                                  </h5>
-                                  <p className="text-[10px] text-stone-500 font-sans line-clamp-1">
-                                    {item.description}
-                                  </p>
-                                  
-                                  {/* Custom details line */}
-                                  {(item.details?.rakhiName || item.details?.crateBoxName) && (
-                                    <p className="text-[9px] text-stone-400 font-mono bg-stone-50 border border-stone-200/40 px-1.5 py-0.5 rounded-md inline-block max-w-full truncate">
-                                      {item.details.crateBoxName && `${item.details.crateBoxName}`}
-                                      {item.details.rakhiName && ` • ${item.details.rakhiName}`}
-                                    </p>
-                                  )}
-
-                                  {/* Individual quick add button */}
-                                  <div className="pt-1 flex justify-between items-center">
-                                    <span className="font-mono text-xs font-bold text-stone-700">
-                                      {formatPrice(item.price * item.quantity)}
-                                    </span>
-                                    <button 
-                                      onClick={() => handleReorderItem(item)}
-                                      className="inline-flex items-center gap-1 text-[9px] font-mono font-black uppercase text-primary hover:underline cursor-pointer"
-                                    >
-                                      <RotateCcw className="w-2.5 h-2.5" /> Buy Again
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* Order Footer Actions */}
-                          <div className="p-4 bg-stone-50/50 border-t border-stone-100 flex justify-between items-center flex-wrap gap-3">
-                            <div className="font-mono text-[10px] text-stone-500">
-                              <span>Sent to <strong>{order.shipping.recipientName}</strong>, {order.shipping.city}</span>
-                              <span className="block text-[9px] text-stone-400">{orderDate}</span>
+                          {/* Info */}
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                {item.category === 'hamper' ? 'Festive Hamper' : item.category === 'thread' ? 'Sacred Thread' : 'Gourmet Sweet'}
+                              </span>
                             </div>
 
-                            <button 
-                              onClick={() => handleReorderAll(order)}
-                              className="inline-flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/25 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase font-mono tracking-wider transition-all hover:scale-103 cursor-pointer shadow-xs"
+                            <h4 className="font-serif font-black italic text-xs text-stone-800 truncate">
+                              {item.title}
+                            </h4>
+
+                            <div className="flex items-center justify-between font-mono">
+                              <span className="text-xs font-bold text-primary">
+                                {formatPrice(item.price)}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex flex-col gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onAddToCart({
+                                  ...item.cartItem,
+                                  id: `${item.cartItem.id}-${Date.now()}`
+                                });
+                                onClose();
+                                setTimeout(() => onOpenCart(), 300);
+                              }}
+                              className="px-2.5 py-1.5 bg-primary hover:bg-primary/90 text-white rounded-lg text-[10px] font-mono font-bold uppercase transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+                              title="Add to Shopping Bag"
                             >
-                              <Sparkles className="w-3.5 h-3.5" /> Reorder Entire Crate
+                              <ShoppingBag className="w-3 h-3" /> +Bag
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => onRemoveWishlist(item.id)}
+                              className="px-2 py-1 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg text-[10px] font-mono transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                              title="Remove from Wishlist"
+                            >
+                              <Trash2 className="w-3 h-3" /> Remove
                             </button>
                           </div>
                         </div>
-                      );
-                    })}
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* PAST ORDER HISTORY SECTION */}
+              {activeTab === 'orders' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-serif text-base font-black italic text-stone-900 flex items-center gap-2">
+                      <History className="w-4.5 h-4.5 text-primary" /> Past Festive Orders
+                    </h3>
+                    <span className="font-mono text-[10px] font-bold text-stone-500 px-2.5 py-0.5 bg-stone-100 border border-stone-200 rounded-full">
+                      {userOrders.length} {userOrders.length === 1 ? 'Order' : 'Orders'}
+                    </span>
                   </div>
-                )}
-              </div>
+
+                  {userOrders.length === 0 ? (
+                    <div className="bg-white rounded-2xl border border-stone-200/80 p-8 text-center space-y-3">
+                      <div className="w-12 h-12 bg-stone-50 rounded-full flex items-center justify-center mx-auto border border-stone-100 text-stone-400">
+                        <Package className="w-5 h-5" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="font-serif font-black italic text-stone-800 text-xs">No Orders Found</h4>
+                        <p className="text-[11px] text-stone-500 max-w-[240px] mx-auto leading-relaxed">
+                          Create and order a beautiful custom Rakhi wood box or pre-curated festive hamper to start your gifting legacy!
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {userOrders.map((order) => {
+                        // Format date gracefully
+                        const orderDate = order.createdAt;
+                        
+                        // Tracking status styles
+                        const statusMap = {
+                          ordered: { label: 'Secured', bg: 'bg-stone-100 text-stone-700 border-stone-200' },
+                          assembled: { label: 'Assembled', bg: 'bg-amber-50 text-amber-800 border-amber-200/80' },
+                          dispatched: { label: 'Dispatched', bg: 'bg-sky-50 text-sky-800 border-sky-200/80' },
+                          'out-for-delivery': { label: 'Out for Delivery', bg: 'bg-indigo-50 text-indigo-800 border-indigo-200/80' },
+                          delivered: { label: 'Tied & Delivered', bg: 'bg-emerald-50 text-emerald-800 border-emerald-200/80' }
+                        };
+
+                        const currentStatus = statusMap[order.status] || { label: order.status, bg: 'bg-stone-100 text-stone-700 border-stone-200' };
+
+                        return (
+                          <div 
+                            key={order.id} 
+                            className="bg-white rounded-2xl border border-stone-200/80 shadow-xs overflow-hidden"
+                          >
+                            {/* Order Header */}
+                            <div className="p-4 bg-stone-50 border-b border-stone-100 flex justify-between items-center font-mono">
+                              <div className="space-y-0.5">
+                                <span className="text-[10px] text-stone-400 uppercase tracking-widest block font-bold">Order ID</span>
+                                <span className="text-[11px] text-stone-800 font-bold">{order.id}</span>
+                              </div>
+                              <span className={`text-[9px] uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-full border ${currentStatus.bg}`}>
+                                {currentStatus.label}
+                              </span>
+                            </div>
+
+                            {/* Order items list */}
+                            <div className="p-4 space-y-3.5 divide-y divide-stone-100">
+                              {order.items.map((item, index) => (
+                                <div key={item.id} className={`flex gap-3.5 items-start ${index > 0 ? 'pt-3.5' : ''}`}>
+                                  <div className="w-12 h-12 rounded-lg overflow-hidden border border-stone-100 bg-stone-50 shrink-0 relative">
+                                    <img 
+                                      src={item.image} 
+                                      alt={item.title} 
+                                      className="w-full h-full object-cover"
+                                    />
+                                    <span className="absolute -bottom-1 -right-1 bg-stone-900 text-white font-mono text-[9px] font-bold h-4 w-4 rounded-full flex items-center justify-center scale-90 border border-white">
+                                      {item.quantity}
+                                    </span>
+                                  </div>
+                                  <div className="space-y-1 flex-1 min-w-0">
+                                    <h5 className="font-serif font-black italic text-xs text-stone-800 truncate leading-snug">
+                                      {item.title}
+                                    </h5>
+                                    <p className="text-[10px] text-stone-500 font-sans line-clamp-1">
+                                      {item.description}
+                                    </p>
+                                    
+                                    {/* Custom details line */}
+                                    {(item.details?.rakhiName || item.details?.crateBoxName) && (
+                                      <p className="text-[9px] text-stone-400 font-mono bg-stone-50 border border-stone-200/40 px-1.5 py-0.5 rounded-md inline-block max-w-full truncate">
+                                        {item.details.crateBoxName && `${item.details.crateBoxName}`}
+                                        {item.details.rakhiName && ` • ${item.details.rakhiName}`}
+                                      </p>
+                                    )}
+
+                                    {/* Individual quick add button */}
+                                    <div className="pt-1 flex justify-between items-center">
+                                      <span className="font-mono text-xs font-bold text-stone-700">
+                                        {formatPrice(item.price * item.quantity)}
+                                      </span>
+                                      <button 
+                                        onClick={() => handleReorderItem(item)}
+                                        className="inline-flex items-center gap-1 text-[9px] font-mono font-black uppercase text-primary hover:underline cursor-pointer"
+                                      >
+                                        <RotateCcw className="w-2.5 h-2.5" /> Buy Again
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Order Footer Actions */}
+                            <div className="p-4 bg-stone-50/50 border-t border-stone-100 flex justify-between items-center flex-wrap gap-3">
+                              <div className="font-mono text-[10px] text-stone-500">
+                                <span>Sent to <strong>{order.shipping.recipientName}</strong>, {order.shipping.city}</span>
+                                <span className="block text-[9px] text-stone-400">{orderDate}</span>
+                              </div>
+
+                              <button 
+                                onClick={() => handleReorderAll(order)}
+                                className="inline-flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/25 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase font-mono tracking-wider transition-all hover:scale-103 cursor-pointer shadow-xs"
+                              >
+                                <Sparkles className="w-3.5 h-3.5" /> Reorder Entire Crate
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
 
             </div>
 

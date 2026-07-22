@@ -35,18 +35,18 @@ body {
   font-family: var(--font-mono);
 }
 
-/* Custom scrollbar for an elegant look */
+/* Custom scrollbar for an elegant festive look */
 ::-webkit-scrollbar {
   width: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #0F1115;
+  background: #FAF6F0;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1A1C20;
+  background: #C4A484;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #C4A484;
+  background: #700016;
 }
 

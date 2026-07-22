@@ -133,3 +133,14 @@ export interface SimulatedEmail {
   bodyHtml: string;
   read: boolean;
 }
+
+export interface WishlistItem {
+  id: string;
+  title: string;
+  price: number;
+  image: string;
+  description: string;
+  category: 'hamper' | 'thread' | 'sweet';
+  cartItem: CartItem;
+}
+
