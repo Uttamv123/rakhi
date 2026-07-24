@@ -43,7 +43,7 @@ import SearchBar from './components/SearchBar';
 import { HERO_IMAGES, RELATION_IMAGES, PANTRY_IMAGES, PRE_CURATED_GIFTS, STANDALONE_THREADS } from './data';
 import { CartItem, Order, SimulatedEmail, StandaloneThreadItem, WishlistItem } from './types';
 import { dbService } from './dbService';
-import { isFirebaseConfigured } from './firebase';
+import { isAwsConfigured } from './aws-config';
 import { useCurrency } from './context/CurrencyContext';
 
 export default function App() {
@@ -127,6 +127,7 @@ export default function App() {
   const [countdown, setCountdown] = useState({ days: '38', hours: '22', minutes: '06', seconds: '01' });
 
   // Database Connection Panel state
+  const [showProducts, setShowProducts] = useState(false);
   const [showDbControl, setShowDbControl] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [showProfile, setShowProfile] = useState(false);
@@ -431,8 +432,8 @@ export default function App() {
           <div className="flex-1 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg min-w-0">
             <SearchBar 
               formatPrice={formatPrice}
-              onAddToCart={handleAddToCart}
-              onOpenCrateBuilder={() => setShowCrateBuilder(true)}
+              onAddToCart={(item) => { setShowProducts(true); handleAddToCart(item); }}
+              onOpenCrateBuilder={() => { setShowProducts(true); setShowCrateBuilder(true); }}
             />
           </div>
 
@@ -520,33 +521,42 @@ export default function App() {
 
             <span className="text-stone-300 hidden sm:inline">•</span>
 
-            <a 
-              href="#pre-curated-racks" 
-              className="text-charcoal-text/85 hover:text-primary transition-colors text-[11px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0"
+            <button 
+              onClick={() => {
+                setShowProducts(true);
+                setTimeout(() => document.getElementById('pre-curated-racks')?.scrollIntoView({ behavior: 'smooth' }), 100);
+              }}
+              className="text-charcoal-text/85 hover:text-primary transition-colors text-[11px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0 bg-transparent border-none outline-hidden cursor-pointer"
             >
               <Gift className="w-3.5 h-3.5 text-primary" />
               Festive Hampers
-            </a>
+            </button>
 
             <span className="text-stone-300 hidden sm:inline">•</span>
 
-            <a 
-              href="#threads-gallery" 
-              className="text-charcoal-text/85 hover:text-primary transition-colors text-[11px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0"
+            <button 
+              onClick={() => {
+                setShowProducts(true);
+                setTimeout(() => document.getElementById('threads-gallery')?.scrollIntoView({ behavior: 'smooth' }), 100);
+              }}
+              className="text-charcoal-text/85 hover:text-primary transition-colors text-[11px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0 bg-transparent border-none outline-hidden cursor-pointer"
             >
               <Heart className="w-3.5 h-3.5 text-primary" />
               Sacred Threads
-            </a>
+            </button>
 
             <span className="text-stone-300 hidden sm:inline">•</span>
 
-            <a 
-              href="#festive-pantry-rack" 
-              className="text-charcoal-text/85 hover:text-primary transition-colors text-[11px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0"
+            <button 
+              onClick={() => {
+                setShowProducts(true);
+                setTimeout(() => document.getElementById('festive-pantry-rack')?.scrollIntoView({ behavior: 'smooth' }), 100);
+              }}
+              className="text-charcoal-text/85 hover:text-primary transition-colors text-[11px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0 bg-transparent border-none outline-hidden cursor-pointer"
             >
               <Package className="w-3.5 h-3.5 text-primary" />
               Gourmet Sweets
-            </a>
+            </button>
 
             <span className="text-stone-300 hidden sm:inline">•</span>
 
@@ -603,12 +613,12 @@ export default function App() {
                 >
                   Customize Crate Option <Sparkles className="w-4 h-4 text-white" />
                 </button>
-                <a 
-                  href="#pre-curated-racks"
-                  className="border border-primary text-primary px-8 py-4 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-primary/5 transition-all text-center flex items-center justify-center"
+                <button 
+                  onClick={() => setShowProducts(true)}
+                  className="border border-primary text-primary px-8 py-4 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-primary/5 transition-all text-center flex items-center justify-center cursor-pointer"
                 >
                   View All Gifts
-                </a>
+                </button>
               </div>
             </div>
 
@@ -662,6 +672,8 @@ export default function App() {
           </div>
         </section>
 
+        {showProducts && (
+          <>
         {/* SHOP BY RELATION (CRATES LINKED TO CUSTOMIZER) */}
         <section className="py-20 bg-site-bg" id="relation-crates">
           <div className="max-w-container-max mx-auto px-margin-mobile md:px-gutter">
@@ -1196,6 +1208,8 @@ export default function App() {
             </div>
           </div>
         </section>
+          </>
+        )}
 
         {/* NARRATIVE BRAND STORY SECTION */}
         <section className="py-20 bg-white overflow-hidden border-t border-stone-100">
