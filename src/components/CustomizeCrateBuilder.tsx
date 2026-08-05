@@ -17,7 +17,7 @@ import {
   HelpCircle,
   Undo
 } from 'lucide-react';
-import { CRATE_BOX_STYLES, RAKHI_THREADS, PREMIUM_TREATS, CARD_TEMPLATES } from '../data';
+import { CARD_TEMPLATES } from '../data';
 import { CustomCrate, CrateBoxStyle, RakhiThread, PremiumTreat, MessageCardTemplate, PersonalizedCard, CartItem } from '../types';
 import { useCurrency } from '../context/CurrencyContext';
 
@@ -25,23 +25,26 @@ interface CustomizeCrateBuilderProps {
   onCrateAdded: (cartItem: CartItem) => void;
   onClose: () => void;
   initialRelationFilter?: 'all' | 'brother' | 'kids' | 'bhaiya-bhabhi';
+  rakhiThreads: RakhiThread[];
+  premiumTreats: PremiumTreat[];
+  crateBoxStyles: CrateBoxStyle[];
 }
 
-export default function CustomizeCrateBuilder({ onCrateAdded, onClose, initialRelationFilter = 'all' }: CustomizeCrateBuilderProps) {
+export default function CustomizeCrateBuilder({ onCrateAdded, onClose, initialRelationFilter = 'all', rakhiThreads, premiumTreats, crateBoxStyles }: CustomizeCrateBuilderProps) {
   const { formatPrice } = useCurrency();
   const [activeTab, setActiveTab] = useState<'box' | 'rakhi' | 'treats' | 'card'>('box');
   const [relationFilter, setRelationFilter] = useState<'all' | 'brother' | 'kids' | 'bhaiya-bhabhi'>(initialRelationFilter);
   
-  // Custom builder states
-  const [selectedBox, setSelectedBox] = useState<CrateBoxStyle>(CRATE_BOX_STYLES[0]);
+  // Custom builder states — use props with fallbacks for empty arrays during loading
+  const [selectedBox, setSelectedBox] = useState<CrateBoxStyle | null>(crateBoxStyles[0] ?? null);
   
   // Find a sensible default Rakhi based on the initial relationship filter
-  const initialRakhi = RAKHI_THREADS.find(r => 
+  const initialRakhi = rakhiThreads.find(r => 
     initialRelationFilter !== 'all' ? r.relationTags.includes(initialRelationFilter) : true
-  ) || RAKHI_THREADS[0];
+  ) || rakhiThreads[0] || null;
   
-  const [selectedRakhi, setSelectedRakhi] = useState<RakhiThread>(initialRakhi);
-  const [selectedTreats, setSelectedTreats] = useState<PremiumTreat[]>([PREMIUM_TREATS[0]]);
+  const [selectedRakhi, setSelectedRakhi] = useState<RakhiThread | null>(initialRakhi);
+  const [selectedTreats, setSelectedTreats] = useState<PremiumTreat[]>(premiumTreats[0] ? [premiumTreats[0]] : []);
   
   // Message card states
   const [cardTemplate, setCardTemplate] = useState<MessageCardTemplate>(CARD_TEMPLATES[0]);
@@ -51,8 +54,8 @@ export default function CustomizeCrateBuilder({ onCrateAdded, onClose, initialRe
   const [showCardPreview, setShowCardPreview] = useState(false);
 
   // Calculate prices
-  const boxPrice = selectedBox.price;
-  const rakhiPrice = selectedRakhi.price;
+  const boxPrice = selectedBox?.price ?? 0;
+  const rakhiPrice = selectedRakhi?.price ?? 0;
   const treatsPrice = selectedTreats.reduce((sum, item) => sum + item.price, 0);
   const totalPrice = boxPrice + rakhiPrice + treatsPrice;
 
@@ -69,6 +72,8 @@ export default function CustomizeCrateBuilder({ onCrateAdded, onClose, initialRe
   };
 
   const handleAddCrateToCart = () => {
+    if (!selectedBox || !selectedRakhi) return;
+
     const customizedCrate: PersonalizedCard = {
       templateId: cardTemplate.id,
       toName: toName || 'Beloved Brother',
@@ -139,13 +144,13 @@ export default function CustomizeCrateBuilder({ onCrateAdded, onClose, initialRe
                 className="w-full h-full rounded-xl p-4 flex flex-col justify-between items-center relative transition-all duration-500 overflow-hidden"
                 style={{
                   boxShadow: 'inset 0 0 20px rgba(0,0,0,0.1)',
-                  backgroundColor: selectedBox.id === 'wooden-heritage' ? '#FAF1E6' : selectedBox.id === 'royal-velvet' ? '#FAF0F2' : '#F7F6F5',
-                  border: selectedBox.id === 'wooden-heritage' ? '4px solid #8C6239' : selectedBox.id === 'royal-velvet' ? '4px solid #700016' : '4px dashed #8C8C8C'
+                  backgroundColor: selectedBox?.id === 'wooden-heritage' ? '#FAF1E6' : selectedBox?.id === 'royal-velvet' ? '#FAF0F2' : '#F7F6F5',
+                  border: selectedBox?.id === 'wooden-heritage' ? '4px solid #8C6239' : selectedBox?.id === 'royal-velvet' ? '4px solid #700016' : '4px dashed #8C8C8C'
                 }}
               >
                 {/* Visual Label */}
                 <span className="absolute top-2 right-2 text-[10px] font-bold tracking-wider uppercase font-mono text-primary/70">
-                  {selectedBox.name}
+                  {selectedBox?.name ?? 'No box selected'}
                 </span>
 
                 {/* Inside details: Rakhi thread in center */}
@@ -155,13 +160,13 @@ export default function CustomizeCrateBuilder({ onCrateAdded, onClose, initialRe
                     {/* Golden string effect */}
                     <div className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#C4A484] to-transparent rotate-6 opacity-80" />
                     <img 
-                      src={selectedRakhi.image} 
-                      alt={selectedRakhi.name}
+                      src={selectedRakhi?.image ?? ''} 
+                      alt={selectedRakhi?.name ?? 'No rakhi selected'}
                       className="w-20 h-20 object-contain z-10 transition-transform duration-300 hover:scale-110"
                     />
                   </div>
                   <span className="text-xs font-bold text-charcoal-text mt-2 text-center truncate w-full px-2 font-sans">
-                    {selectedRakhi.name}
+                    {selectedRakhi?.name ?? 'No rakhi selected'}
                   </span>
                 </div>
 
@@ -289,12 +294,12 @@ export default function CustomizeCrateBuilder({ onCrateAdded, onClose, initialRe
                   <p className="text-xs text-charcoal-text/70 font-sans">The signature casing defines the visual layout and protective strength of your delivery across the miles.</p>
                   
                   <div className="space-y-3 pt-2">
-                    {CRATE_BOX_STYLES.map((box) => (
+                    {crateBoxStyles.map((box) => (
                       <div
                         key={box.id}
                         onClick={() => setSelectedBox(box)}
                         className={`flex gap-4 p-4 rounded-xl border transition-all cursor-pointer items-center ${
-                          selectedBox.id === box.id
+                          selectedBox?.id === box.id
                             ? 'border-primary bg-primary/5 shadow-md'
                             : 'border-stone-200 hover:border-stone-300 bg-white'
                         }`}
@@ -312,9 +317,9 @@ export default function CustomizeCrateBuilder({ onCrateAdded, onClose, initialRe
                           <p className="text-xs text-charcoal-text/70 mt-1 leading-relaxed font-sans">{box.description}</p>
                         </div>
                         <div className={`w-5 h-5 rounded-lg border flex items-center justify-center shrink-0 ${
-                          selectedBox.id === box.id ? 'bg-primary border-primary text-white' : 'border-stone-300 bg-white'
+                          selectedBox?.id === box.id ? 'bg-primary border-primary text-white' : 'border-stone-300 bg-white'
                         }`}>
-                          {selectedBox.id === box.id && <Check className="w-3 h-3 stroke-[3]" />}
+                          {selectedBox?.id === box.id && <Check className="w-3 h-3 stroke-[3]" />}
                         </div>
                       </div>
                     ))}
@@ -345,7 +350,7 @@ export default function CustomizeCrateBuilder({ onCrateAdded, onClose, initialRe
                           : 'text-stone-500 hover:text-stone-700 hover:bg-stone-200/50'
                       }`}
                     >
-                      All ({RAKHI_THREADS.length})
+                      All ({rakhiThreads.length})
                     </button>
                     <button
                       type="button"
@@ -356,7 +361,7 @@ export default function CustomizeCrateBuilder({ onCrateAdded, onClose, initialRe
                           : 'text-stone-500 hover:text-stone-700 hover:bg-stone-200/50'
                       }`}
                     >
-                      Brother ({RAKHI_THREADS.filter(r => r.relationTags.includes('brother')).length})
+                      Brother ({rakhiThreads.filter(r => r.relationTags.includes('brother')).length})
                     </button>
                     <button
                       type="button"
@@ -367,7 +372,7 @@ export default function CustomizeCrateBuilder({ onCrateAdded, onClose, initialRe
                           : 'text-stone-500 hover:text-stone-700 hover:bg-stone-200/50'
                       }`}
                     >
-                      Kids ({RAKHI_THREADS.filter(r => r.relationTags.includes('kids')).length})
+                      Kids ({rakhiThreads.filter(r => r.relationTags.includes('kids')).length})
                     </button>
                     <button
                       type="button"
@@ -378,17 +383,17 @@ export default function CustomizeCrateBuilder({ onCrateAdded, onClose, initialRe
                           : 'text-stone-500 hover:text-stone-700 hover:bg-stone-200/50'
                       }`}
                     >
-                      Bhaiya Bhabhi ({RAKHI_THREADS.filter(r => r.relationTags.includes('bhaiya-bhabhi')).length})
+                      Bhaiya Bhabhi ({rakhiThreads.filter(r => r.relationTags.includes('bhaiya-bhabhi')).length})
                     </button>
                   </div>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                    {RAKHI_THREADS.filter(rakhi => relationFilter === 'all' || rakhi.relationTags.includes(relationFilter)).map((rakhi) => (
+                    {rakhiThreads.filter(rakhi => relationFilter === 'all' || rakhi.relationTags.includes(relationFilter)).map((rakhi) => (
                       <div
                         key={rakhi.id}
                         onClick={() => setSelectedRakhi(rakhi)}
                         className={`p-3 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
-                          selectedRakhi.id === rakhi.id
+                          selectedRakhi?.id === rakhi.id
                             ? 'border-primary bg-primary/5 shadow-md scale-[1.01]'
                             : 'border-stone-200 hover:border-stone-300 bg-white'
                         }`}
@@ -400,7 +405,7 @@ export default function CustomizeCrateBuilder({ onCrateAdded, onClose, initialRe
                             referrerPolicy="no-referrer"
                             className="w-full h-full object-cover rounded-lg"
                           />
-                          {selectedRakhi.id === rakhi.id && (
+                          {selectedRakhi?.id === rakhi.id && (
                             <div className="absolute top-2 right-2 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1 shadow-sm font-sans">
                               <Check className="w-3 h-3 stroke-[3]" /> Active
                             </div>
@@ -445,7 +450,7 @@ export default function CustomizeCrateBuilder({ onCrateAdded, onClose, initialRe
                   </p>
                   
                   <div className="space-y-3 pt-2">
-                    {PREMIUM_TREATS.map((treat) => {
+                    {premiumTreats.map((treat) => {
                       const isAdded = selectedTreats.some(t => t.id === treat.id);
                       return (
                         <div

@@ -40,7 +40,8 @@ import UserProfileDrawer from './components/UserProfileDrawer';
 import FAQSection from './components/FAQSection';
 import SearchBar from './components/SearchBar';
 
-import { HERO_IMAGES, RELATION_IMAGES, PANTRY_IMAGES, PRE_CURATED_GIFTS, STANDALONE_THREADS } from './data';
+import { HERO_IMAGES, RELATION_IMAGES, PANTRY_IMAGES } from './data';
+import { useProducts } from './hooks/useProducts';
 import { CartItem, Order, SimulatedEmail, StandaloneThreadItem, WishlistItem } from './types';
 import { dbService } from './dbService';
 import { isAwsConfigured } from './aws-config';
@@ -48,6 +49,8 @@ import { useCurrency } from './context/CurrencyContext';
 
 export default function App() {
   const { currency, setCurrency, formatPrice, convertPrice, currentCurrencyConfig, CURRENCIES } = useCurrency();
+  const { preCuratedGifts, standaloneThreads, rakhiThreads, premiumTreats, crateBoxStyles, isLoading, error, isFallback, retry } = useProducts();
+  const [dismissedBanner, setDismissedBanner] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   
@@ -434,6 +437,11 @@ export default function App() {
               formatPrice={formatPrice}
               onAddToCart={(item) => { setShowProducts(true); handleAddToCart(item); }}
               onOpenCrateBuilder={() => { setShowProducts(true); setShowCrateBuilder(true); }}
+              preCuratedGifts={preCuratedGifts}
+              standaloneThreads={standaloneThreads}
+              rakhiThreads={rakhiThreads}
+              premiumTreats={premiumTreats}
+              crateBoxStyles={crateBoxStyles}
             />
           </div>
 
@@ -512,50 +520,14 @@ export default function App() {
           <div className="max-w-container-max mx-auto flex items-center justify-start md:justify-center overflow-x-auto scrollbar-none whitespace-nowrap gap-3 sm:gap-6 text-xs font-bold font-sans">
             
             <button 
-              onClick={() => setShowCrateBuilder(true)} 
-              className="bg-primary text-white hover:bg-primary/90 px-3 py-1 rounded-full text-[11px] sm:text-xs font-mono font-bold uppercase tracking-wider cursor-pointer transition-all flex items-center gap-1.5 shrink-0 shadow-xs"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-secondary-gold" />
-              Crate Customizer
-            </button>
-
-            <span className="text-stone-300 hidden sm:inline">•</span>
-
-            <button 
               onClick={() => {
                 setShowProducts(true);
                 setTimeout(() => document.getElementById('pre-curated-racks')?.scrollIntoView({ behavior: 'smooth' }), 100);
               }}
-              className="text-charcoal-text/85 hover:text-primary transition-colors text-[11px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0 bg-transparent border-none outline-hidden cursor-pointer"
+              className="bg-primary text-white hover:bg-primary/90 px-3 py-1 rounded-full text-[11px] sm:text-xs font-mono font-bold uppercase tracking-wider cursor-pointer transition-all flex items-center gap-1.5 shrink-0 shadow-xs"
             >
-              <Gift className="w-3.5 h-3.5 text-primary" />
-              Festive Hampers
-            </button>
-
-            <span className="text-stone-300 hidden sm:inline">•</span>
-
-            <button 
-              onClick={() => {
-                setShowProducts(true);
-                setTimeout(() => document.getElementById('threads-gallery')?.scrollIntoView({ behavior: 'smooth' }), 100);
-              }}
-              className="text-charcoal-text/85 hover:text-primary transition-colors text-[11px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0 bg-transparent border-none outline-hidden cursor-pointer"
-            >
-              <Heart className="w-3.5 h-3.5 text-primary" />
-              Sacred Threads
-            </button>
-
-            <span className="text-stone-300 hidden sm:inline">•</span>
-
-            <button 
-              onClick={() => {
-                setShowProducts(true);
-                setTimeout(() => document.getElementById('festive-pantry-rack')?.scrollIntoView({ behavior: 'smooth' }), 100);
-              }}
-              className="text-charcoal-text/85 hover:text-primary transition-colors text-[11px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0 bg-transparent border-none outline-hidden cursor-pointer"
-            >
-              <Package className="w-3.5 h-3.5 text-primary" />
-              Gourmet Sweets
+              <Gift className="w-3.5 h-3.5 text-secondary-gold" />
+              Festive Hampers & Rakhi
             </button>
 
             <span className="text-stone-300 hidden sm:inline">•</span>
@@ -674,6 +646,37 @@ export default function App() {
 
         {showProducts && (
           <>
+        {/* Fallback Banner */}
+        {isFallback && !dismissedBanner && (
+          <div className="max-w-container-max mx-auto px-margin-mobile md:px-gutter pt-6">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-6 flex items-center justify-between">
+              <p className="text-amber-800 text-sm">Showing cached catalog. Live data unavailable.</p>
+              <button onClick={() => setDismissedBanner(true)} className="text-amber-600 hover:text-amber-800 text-sm font-medium cursor-pointer">Dismiss</button>
+            </div>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {isLoading && (
+          <div className="max-w-container-max mx-auto px-margin-mobile md:px-gutter py-12">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="bg-stone-200 rounded-2xl h-80 animate-pulse" />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && !isFallback && (
+          <div className="max-w-container-max mx-auto px-margin-mobile md:px-gutter">
+            <div className="text-center py-12">
+              <p className="text-stone-600 mb-4">Unable to load products. Please try again.</p>
+              <button onClick={retry} className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 cursor-pointer">Try Again</button>
+            </div>
+          </div>
+        )}
+
         {/* SHOP BY RELATION (CRATES LINKED TO CUSTOMIZER) */}
         <section className="py-20 bg-site-bg" id="relation-crates">
           <div className="max-w-container-max mx-auto px-margin-mobile md:px-gutter">
@@ -783,7 +786,7 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {PRE_CURATED_GIFTS.map((gift) => {
+              {preCuratedGifts.map((gift) => {
                 const isWish = isWishlisted(`precurated-${gift.id}`);
                 const hamperCartItem: CartItem = {
                   id: `precurated-${gift.id}`,
@@ -811,10 +814,14 @@ export default function App() {
                     key={gift.id}
                     className="bg-white rounded-2xl border border-stone-100 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between"
                   >
-                    <div className="relative aspect-video bg-warm-cream overflow-hidden">
-                      <img src={gift.image} alt={gift.name} className="w-full h-full object-cover hover:scale-[1.03] transition-all" />
+                    <div className="relative aspect-video bg-warm-cream overflow-hidden group">
+                      {gift.images && gift.images.length > 1 ? (
+                        <ProductImageCarousel images={gift.images} alt={gift.name} />
+                      ) : (
+                        <img src={gift.image} alt={gift.name} className="w-full h-full object-cover hover:scale-[1.03] transition-all" />
+                      )}
                       {gift.badge && (
-                        <span className="absolute top-3 left-3 bg-primary text-white font-black text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-md font-mono">
+                        <span className="absolute top-3 left-3 bg-primary text-white font-black text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-md font-mono z-10">
                           {gift.badge}
                         </span>
                       )}
@@ -901,313 +908,6 @@ export default function App() {
           </div>
         </div>
       </section>
-
-        {/* SACRED THREADS GALLERY */}
-        <section className="py-20 bg-warm-cream/30 border-t border-stone-200/60" id="threads-gallery">
-          <div className="max-w-container-max mx-auto px-margin-mobile md:px-gutter">
-            <div className="text-center mb-12 max-w-2xl mx-auto space-y-3">
-              <span className="text-primary text-xs font-bold uppercase tracking-widest font-mono">Artisanal Sibling Protection</span>
-              <h2 className="font-serif text-4xl font-black italic text-primary">Sacred Threads Gallery</h2>
-              <p className="text-xs text-charcoal-text/80 leading-relaxed font-sans">
-                Explore our dedicated range of hand-woven sacred threads, ranging from single traditional protection amulets to premium curated gift bundles complete with gourmet sweets and lucky brass keepsakes.
-              </p>
-
-              {/* Filtering tabs */}
-              <div className="flex flex-wrap justify-center gap-2 pt-6 font-mono text-xs">
-                <button
-                  type="button"
-                  onClick={() => setSelectedThreadTab('all')}
-                  className={`px-4 py-2 rounded-full font-bold uppercase tracking-wider transition-all border cursor-pointer ${
-                    selectedThreadTab === 'all'
-                      ? 'bg-primary text-white border-primary shadow-sm'
-                      : 'bg-white text-stone-600 border-stone-200 hover:border-stone-300'
-                  }`}
-                >
-                  All Threads ({STANDALONE_THREADS.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedThreadTab('normal')}
-                  className={`px-4 py-2 rounded-full font-bold uppercase tracking-wider transition-all border cursor-pointer ${
-                    selectedThreadTab === 'normal'
-                      ? 'bg-primary text-white border-primary shadow-sm'
-                      : 'bg-white text-stone-600 border-stone-200 hover:border-stone-300'
-                  }`}
-                >
-                  Normal Threads ({formatPrice(3.49)} - {formatPrice(5.99)})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedThreadTab('premium')}
-                  className={`px-4 py-2 rounded-full font-bold uppercase tracking-wider transition-all border cursor-pointer ${
-                    selectedThreadTab === 'premium'
-                      ? 'bg-primary text-white border-primary shadow-sm'
-                      : 'bg-white text-stone-600 border-stone-200 hover:border-stone-300'
-                  }`}
-                >
-                  Premium Sets ({formatPrice(14.99)} - {formatPrice(23.50)})
-                </button>
-              </div>
-            </div>
-
-            {/* Threads Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {STANDALONE_THREADS.filter(t => selectedThreadTab === 'all' || t.type === selectedThreadTab).map((thread) => {
-                const isWish = isWishlisted(`thread-${thread.id}`);
-                const threadCartItem: CartItem = {
-                  id: `thread-${thread.id}`,
-                  type: 'standalone-thread',
-                  title: thread.name,
-                  price: thread.price,
-                  image: thread.image,
-                  description: thread.description,
-                  details: {
-                    rakhiName: thread.name
-                  },
-                  quantity: 1
-                };
-
-                return (
-                  <div
-                    key={thread.id}
-                    className="bg-white rounded-2xl border border-stone-200/60 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between"
-                  >
-                    {/* Image Container with Badge */}
-                    <div className="relative aspect-[4/3] bg-warm-cream overflow-hidden group border-b border-stone-100">
-                      <img
-                        src={thread.image}
-                        alt={thread.name}
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                      <div className="absolute top-3 left-3 flex gap-1.5 z-10">
-                        <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md font-mono shadow-sm ${
-                          thread.type === 'premium' ? 'bg-primary text-white' : 'bg-stone-800 text-white'
-                        }`}>
-                          {thread.type === 'premium' ? 'Premium Set' : 'Normal Thread'}
-                        </span>
-                        {thread.badge && (
-                          <span className="bg-[#E6C687] text-stone-900 font-bold text-[9px] uppercase tracking-widest px-2 py-1 rounded-md font-mono shadow-sm">
-                            {thread.badge}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Wishlist Heart Button */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleWishlist({
-                            id: `thread-${thread.id}`,
-                            title: thread.name,
-                            price: thread.price,
-                            image: thread.image,
-                            description: thread.description,
-                            category: 'thread',
-                            cartItem: threadCartItem
-                          });
-                        }}
-                        className={`absolute top-3 right-3 p-2 rounded-full transition-all cursor-pointer z-10 ${
-                          isWish
-                            ? 'bg-white text-primary shadow-md scale-110'
-                            : 'bg-white/80 hover:bg-white text-stone-600 hover:text-primary backdrop-blur-xs shadow-xs'
-                        }`}
-                        title={isWish ? 'Remove from Wishlist' : 'Add to Wishlist'}
-                      >
-                        <Heart className={`w-4 h-4 ${isWish ? 'fill-primary text-primary' : ''}`} />
-                      </button>
-                    </div>
-
-                    {/* Body Content */}
-                  <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-start gap-2">
-                        <h3 className="font-serif text-base font-black italic text-charcoal-text leading-tight">{thread.name}</h3>
-                        <span className="font-mono text-base font-black text-primary shrink-0">{formatPrice(thread.price)}</span>
-                      </div>
-                      <p className="text-xs text-charcoal-text/75 leading-relaxed font-sans">{thread.description}</p>
-                    </div>
-
-                    {/* Materials & Composition details */}
-                    <div className="bg-warm-cream/40 p-3 rounded-lg border border-stone-200/50 space-y-1">
-                      <span className="font-bold text-primary uppercase text-[8px] tracking-wider block">Craftsmanship &amp; Materials</span>
-                      <p className="italic text-stone-600 text-[10px] leading-relaxed font-sans">{thread.madeOf}</p>
-                    </div>
-
-                    {/* Pack Inclusions list */}
-                    <div className="space-y-1.5">
-                      <span className="text-[9px] font-bold text-stone-400 uppercase tracking-widest block font-mono">What's Included:</span>
-                      <ul className="text-[10px] text-charcoal-text/80 space-y-1 font-sans">
-                        {thread.whatsIncluded.map((incl, idx) => (
-                          <li key={idx} className="flex items-start gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 mt-1" />
-                            <span>{incl}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    {/* Action buttons */}
-                    <div className="pt-2 grid grid-cols-2 gap-2 font-mono text-[10px]">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const cartItem: CartItem = {
-                            id: `${thread.id}-${Date.now()}`,
-                            type: 'standalone-thread',
-                            title: thread.name,
-                            price: thread.price,
-                            image: thread.image,
-                            description: thread.description,
-                            details: {
-                              rakhiName: thread.name,
-                              crateBoxName: thread.type === 'premium' ? 'Premium Presentation Box' : 'Complimentary Velvet Pouch',
-                              treatsNames: thread.type === 'premium' ? ['Complimentary 100g Fresh Sweets/Chocolates Included'] : undefined,
-                              card: {
-                                templateId: 'mandala-royal',
-                                toName: '',
-                                fromName: '',
-                                message: 'Wishing you a magical and blessed Raksha Bandhan filled with sweetness and beautiful memories!'
-                              }
-                            },
-                            quantity: 1
-                          };
-                          handleAddToCart(cartItem);
-                        }}
-                        className="border border-stone-200 text-stone-600 hover:bg-stone-50 transition-all font-bold uppercase tracking-wider py-2.5 rounded-lg text-center cursor-pointer"
-                      >
-                        Quick Add
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPersonalizingGift({
-                            id: `${thread.id}-${Date.now()}`,
-                            type: 'standalone-thread',
-                            title: thread.name,
-                            price: thread.price,
-                            image: thread.image,
-                            description: thread.description,
-                            details: {
-                              rakhiName: thread.name,
-                              crateBoxName: thread.type === 'premium' ? 'Premium Presentation Box' : 'Complimentary Velvet Pouch',
-                              treatsNames: thread.type === 'premium' ? ['Complimentary 100g Fresh Sweets/Chocolates Included'] : undefined,
-                              card: {
-                                templateId: 'mandala-royal',
-                                toName: '',
-                                fromName: '',
-                                message: 'Wishing you a magical and blessed Raksha Bandhan filled with sweetness and beautiful memories!'
-                              }
-                            },
-                            quantity: 1
-                          });
-                        }}
-                        className="bg-primary text-white hover:bg-primary/95 transition-all font-bold uppercase tracking-wider py-2.5 rounded-lg flex items-center justify-center gap-1 cursor-pointer"
-                      >
-                        Personalize <Sparkles className="w-2.5 h-2.5 text-white animate-pulse" />
-                      </button>
-                    </div>
-
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-        {/* ASYMMETRIC FEATURED GRID (THE FESTIVE PANTRY) */}
-        <section className="py-20 bg-site-bg border-t border-stone-100" id="festive-pantry-rack">
-          <div className="max-w-container-max mx-auto px-margin-mobile md:px-gutter">
-            <div className="text-center mb-12 max-w-2xl mx-auto">
-              <h2 className="font-serif text-4xl font-black italic text-primary">The Festive Pantry</h2>
-              <p className="text-xs text-charcoal-text/80 mt-2 leading-relaxed font-sans">
-                Curated combinations that pair the sacred threads with the UK's favorite traditional Indian festive indulgences.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-stretch">
-              
-              {/* Large Feature: Sweets */}
-              <div className="md:col-span-8 group relative rounded-2xl overflow-hidden shadow-sm hover:shadow-xl bg-white border border-stone-200/80 hover:border-primary/30 transition-all duration-500">
-                <div className="grid md:grid-cols-2 h-full">
-                  <div className="relative overflow-hidden h-64 md:h-full bg-warm-cream">
-                    <img 
-                      className="w-full h-full object-cover transform group-hover:scale-108 transition-transform duration-700 ease-out" 
-                      alt="Traditional sweets and Rakhi thread platters" 
-                      src={PANTRY_IMAGES.sweets}
-                    />
-                    <div className="absolute top-4 right-4 z-10">
-                      <span className="bg-primary text-white px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-full font-mono shadow-xs">
-                        Local UK Dispatch
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="p-8 flex flex-col justify-center space-y-4">
-                    <span className="text-primary text-xs font-bold uppercase tracking-widest font-mono">Bestseller Range</span>
-                    <h3 className="font-serif text-xl font-black italic text-charcoal-text group-hover:text-primary transition-colors">Rakhi with Traditional Sweets</h3>
-                    <p className="text-xs text-charcoal-text/70 leading-relaxed font-sans">
-                      Freshly prepared artisanal Mithai (Laddoos, Kaju Katli) sealed in protective nitrogen-flushed packages. Delivered within 24-48 hours across the UK. Taste the authentic flavors of home.
-                    </p>
-                    <div>
-                      <button 
-                        onClick={() => setShowCrateBuilder(true)}
-                        className="bg-primary text-white px-6 py-3 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-primary/90 transition-all cursor-pointer shadow-xs"
-                      >
-                        Customize Sweets Crate
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Side Features */}
-              <div className="md:col-span-4 flex flex-col gap-8">
-                
-                {/* Dry Fruits */}
-                <div 
-                  onClick={() => setShowCrateBuilder(true)}
-                  className="flex-1 group relative rounded-2xl overflow-hidden shadow-sm hover:shadow-xl bg-white border border-stone-200/80 p-4 flex flex-col justify-between cursor-pointer hover:border-primary/40 hover:-translate-y-0.5 transition-all duration-300"
-                >
-                  <div className="h-40 overflow-hidden rounded-xl bg-warm-cream relative">
-                    <img 
-                      className="w-full h-full object-cover transform group-hover:scale-108 transition-transform duration-500 ease-out" 
-                      alt="Gourmet nuts and roasted cashews" 
-                      src={PANTRY_IMAGES.dryFruits}
-                    />
-                  </div>
-                  <div className="text-center pt-4">
-                    <h4 className="font-serif text-sm font-black italic text-charcoal-text group-hover:text-primary transition-colors">With Roasted Dry Fruits</h4>
-                    <span className="text-primary text-[10px] font-bold uppercase tracking-widest font-mono mt-1 block">View Range &rarr;</span>
-                  </div>
-                </div>
-
-                {/* Chocolates */}
-                <div 
-                  onClick={() => setShowCrateBuilder(true)}
-                  className="flex-1 group relative rounded-2xl overflow-hidden shadow-sm hover:shadow-xl bg-white border border-stone-200/80 p-4 flex flex-col justify-between cursor-pointer hover:border-primary/40 hover:-translate-y-0.5 transition-all duration-300"
-                >
-                  <div className="h-40 overflow-hidden rounded-xl bg-warm-cream relative">
-                    <img 
-                      className="w-full h-full object-cover transform group-hover:scale-108 transition-transform duration-500 ease-out" 
-                      alt="Rich artisanal chocolate clusters" 
-                      src={PANTRY_IMAGES.chocolates}
-                    />
-                  </div>
-                  <div className="text-center pt-4">
-                    <h4 className="font-serif text-sm font-black italic text-charcoal-text group-hover:text-primary transition-colors">With Artisanal Chocolates</h4>
-                    <span className="text-primary text-[10px] font-bold uppercase tracking-widest font-mono mt-1 block">View Range &rarr;</span>
-                  </div>
-                </div>
-
-              </div>
-
-            </div>
-          </div>
-        </section>
           </>
         )}
 
@@ -1503,6 +1203,9 @@ export default function App() {
             onCrateAdded={handleAddToCart}
             onClose={() => setShowCrateBuilder(false)}
             initialRelationFilter={crateBuilderInitialFilter}
+            rakhiThreads={rakhiThreads}
+            premiumTreats={premiumTreats}
+            crateBoxStyles={crateBoxStyles}
           />
         )}
       </AnimatePresence>
@@ -1720,6 +1423,57 @@ export default function App() {
         )}
       </AnimatePresence>
 
+    </div>
+  );
+}
+
+// Simple image carousel for product cards with multiple images
+function ProductImageCarousel({ images, alt }: { images: string[]; alt: string }) {
+  const [currentIndex, setCurrentIndex] = React.useState(0);
+
+  const goNext = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentIndex((prev) => (prev + 1) % images.length);
+  };
+
+  const goPrev = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
+
+  return (
+    <div className="relative w-full h-full">
+      <img
+        src={images[currentIndex]}
+        alt={`${alt} - image ${currentIndex + 1}`}
+        className="w-full h-full object-cover transition-all duration-300"
+      />
+      {/* Navigation arrows */}
+      <button
+        onClick={goPrev}
+        className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full w-7 h-7 flex items-center justify-center shadow opacity-0 group-hover:opacity-100 transition-opacity z-10"
+        aria-label="Previous image"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+      <button
+        onClick={goNext}
+        className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full w-7 h-7 flex items-center justify-center shadow opacity-0 group-hover:opacity-100 transition-opacity z-10"
+        aria-label="Next image"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      </button>
+      {/* Dot indicators */}
+      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+        {images.map((_, idx) => (
+          <button
+            key={idx}
+            onClick={(e) => { e.stopPropagation(); setCurrentIndex(idx); }}
+            className={`w-2 h-2 rounded-full transition-all ${idx === currentIndex ? 'bg-white scale-110' : 'bg-white/50'}`}
+            aria-label={`Image ${idx + 1}`}
+          />
+        ))}
+      </div>
     </div>
   );
 }
