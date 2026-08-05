@@ -60,6 +60,7 @@ export interface PreCuratedGift {
   description: string;
   price: number;
   image: string;
+  images?: string[];  // All product images (for carousel/gallery)
   rakhiName: string;
   sweetsName: string;
   relation: 'brother' | 'kids' | 'couple';

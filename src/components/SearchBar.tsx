@@ -1,13 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, X, ShoppingBag, Sparkles, Filter, Check, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { RAKHI_THREADS, PREMIUM_TREATS, PRE_CURATED_GIFTS, STANDALONE_THREADS, CRATE_BOX_STYLES } from '../data';
-import { CartItem } from '../types';
+import { CartItem, PreCuratedGift, StandaloneThreadItem, RakhiThread, PremiumTreat, CrateBoxStyle } from '../types';
 
 interface SearchBarProps {
   formatPrice: (priceInGbp: number) => string;
   onAddToCart: (item: CartItem) => void;
   onOpenCrateBuilder?: () => void;
+  preCuratedGifts: PreCuratedGift[];
+  standaloneThreads: StandaloneThreadItem[];
+  rakhiThreads?: RakhiThread[];
+  premiumTreats?: PremiumTreat[];
+  crateBoxStyles?: CrateBoxStyle[];
 }
 
 export type SearchCategory = 'all' | 'rakhis' | 'sweets' | 'crates';
@@ -24,7 +28,7 @@ export interface SearchResultItem {
   originalItem: any;
 }
 
-export default function SearchBar({ formatPrice, onAddToCart, onOpenCrateBuilder }: SearchBarProps) {
+export default function SearchBar({ formatPrice, onAddToCart, onOpenCrateBuilder, preCuratedGifts, standaloneThreads, rakhiThreads = [], premiumTreats = [], crateBoxStyles = [] }: SearchBarProps) {
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<SearchCategory>('all');
@@ -55,10 +59,10 @@ export default function SearchBar({ formatPrice, onAddToCart, onOpenCrateBuilder
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Gather all items from datasets
+  // Gather all items from datasets (using props)
   const allItems: SearchResultItem[] = [
     // Standalone Threads
-    ...STANDALONE_THREADS.map((t) => ({
+    ...standaloneThreads.map((t) => ({
       id: `standalone-${t.id}`,
       category: 'rakhis' as const,
       categoryLabel: 'Sacred Thread',
@@ -70,7 +74,7 @@ export default function SearchBar({ formatPrice, onAddToCart, onOpenCrateBuilder
       originalItem: { type: 'standalone' as const, data: t },
     })),
     // Rakhi Threads
-    ...RAKHI_THREADS.map((r) => ({
+    ...rakhiThreads.map((r) => ({
       id: `rakhi-${r.id}`,
       category: 'rakhis' as const,
       categoryLabel: 'Rakhi Thread',
@@ -82,7 +86,7 @@ export default function SearchBar({ formatPrice, onAddToCart, onOpenCrateBuilder
       originalItem: { type: 'rakhi' as const, data: r },
     })),
     // Gourmet Sweets & Treats
-    ...PREMIUM_TREATS.map((s) => ({
+    ...premiumTreats.map((s) => ({
       id: `treat-${s.id}`,
       category: 'sweets' as const,
       categoryLabel: s.category === 'sweets' ? 'Mithai / Sweet' : s.category === 'dry-fruits' ? 'Dry Fruits' : 'Chocolates',
@@ -94,7 +98,7 @@ export default function SearchBar({ formatPrice, onAddToCart, onOpenCrateBuilder
       originalItem: { type: 'treat' as const, data: s },
     })),
     // Pre-curated Hampers
-    ...PRE_CURATED_GIFTS.map((g) => ({
+    ...preCuratedGifts.map((g) => ({
       id: `precurated-${g.id}`,
       category: 'crates' as const,
       categoryLabel: 'Festive Hamper Crate',
@@ -106,7 +110,7 @@ export default function SearchBar({ formatPrice, onAddToCart, onOpenCrateBuilder
       originalItem: { type: 'precurated' as const, data: g },
     })),
     // Crate Box Styles
-    ...CRATE_BOX_STYLES.map((c) => ({
+    ...crateBoxStyles.map((c) => ({
       id: `cratestyle-${c.id}`,
       category: 'crates' as const,
       categoryLabel: 'Empty Crate Box',
