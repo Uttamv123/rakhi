@@ -124,7 +124,7 @@ export default function OrderTracker({
   const getEmailSubject = (status: Order['status'], orderId: string) => {
     switch (status) {
       case 'ordered':
-        return `Order Confirmed: Rakhi Crate Gift #${orderId} Registered`;
+        return `Order Confirmed: SendSmiles Gift #${orderId} Registered`;
       case 'assembled':
         return `Assembled & Polished: Crate #${orderId} has been Handcrafted`;
       case 'dispatched':
@@ -166,8 +166,8 @@ export default function OrderTracker({
         <div style="max-width: 500px; margin: 0 auto; bg-color: #ffffff; background: #ffffff; border-radius: 12px; border: 2px solid #6e000a; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
           <!-- Banner -->
           <div style="background-color: #6e000a; padding: 24px; text-align: center; color: white;">
-            <h1 style="margin: 0; font-family: Georgia, serif; font-size: 22px; letter-spacing: 1px;">RAKHI CRATE</h1>
-            <p style="margin: 4px 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #fed65b;">Premium UK Gifting Services</p>
+            <h1 style="margin: 0; font-family: Georgia, serif; font-size: 22px; letter-spacing: 1px;">SENDSMILES</h1>
+            <p style="margin: 4px 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #fed65b;">Sending Smiles Across the World</p>
           </div>
 
           <!-- Content Status -->
@@ -553,7 +553,7 @@ export default function OrderTracker({
                               >
                                 <div className="flex justify-between items-baseline gap-2">
                                   <span className="text-[9px] uppercase font-mono text-[#C4A484] flex items-center gap-1 font-bold">
-                                    <MessageSquare className="w-2.5 h-2.5" /> Rakhi Crate Support
+                                    <MessageSquare className="w-2.5 h-2.5" /> SendSmiles Support
                                   </span>
                                   <span className="text-[9px] text-[#E5E1DA]/50 font-mono shrink-0">{email.sentAt}</span>
                                 </div>

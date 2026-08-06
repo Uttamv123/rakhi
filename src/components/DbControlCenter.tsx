@@ -14,7 +14,7 @@ import {
   ChevronRight,
   Info
 } from 'lucide-react';
-import { isFirebaseConfigured } from '../firebase';
+import { isAwsConfigured } from '../aws-config';
 import { Order } from '../types';
 
 interface DbControlCenterProps {
@@ -110,24 +110,24 @@ export default function DbControlCenter({ orders, isOpen, onClose, onClearLocalC
               {activeTab === 'status' && (
                 <div className="space-y-6">
                   {/* Status Banner */}
-                  <div className={`p-5 rounded-xl border ${isFirebaseConfigured ? 'bg-emerald-50/50 border-emerald-200/60' : 'bg-amber-50/50 border-amber-200/60'} flex gap-4 items-start`}>
-                    <div className={`p-2.5 rounded-lg shrink-0 ${isFirebaseConfigured ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                  <div className={`p-5 rounded-xl border ${isAwsConfigured ? 'bg-emerald-50/50 border-emerald-200/60' : 'bg-amber-50/50 border-amber-200/60'} flex gap-4 items-start`}>
+                    <div className={`p-2.5 rounded-lg shrink-0 ${isAwsConfigured ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                       <Server className="w-5 h-5 animate-pulse" />
                     </div>
                     <div className="space-y-1">
                       <h3 className="font-serif text-sm font-black italic text-stone-900">
-                        {isFirebaseConfigured ? 'Connected to Live Cloud Firestore' : 'Running in Sandbox Offline Demo'}
+                        {isAwsConfigured ? 'Connected to AWS Cloud (Cognito + DynamoDB)' : 'Running in Sandbox Offline Demo'}
                       </h3>
                       <p className="text-xs text-stone-600 leading-relaxed font-sans">
-                        {isFirebaseConfigured 
-                          ? 'Your application is connected to a live Google Firebase cloud database. All checkout orders, user carts, and state sync across devices in real-time!'
-                          : 'Due to sandboxed environment security parameters, live Firestore is offline. The system is operating in a resilient client-side offline mode. Orders and personalized cards are saved to localStorage instantly.'}
+                        {isAwsConfigured 
+                          ? 'Your application is connected to AWS Cognito for authentication and DynamoDB for data storage. All checkout orders, user carts, and state sync across devices!'
+                          : 'AWS services are not configured. The system is operating in a resilient client-side offline mode. Orders and personalized cards are saved to localStorage instantly.'}
                       </p>
                       
                       <div className="pt-2 flex items-center gap-2">
-                        <span className={`w-2.5 h-2.5 rounded-full ${isFirebaseConfigured ? 'bg-emerald-500 animate-ping' : 'bg-amber-400'} inline-block`} />
+                        <span className={`w-2.5 h-2.5 rounded-full ${isAwsConfigured ? 'bg-emerald-500 animate-ping' : 'bg-amber-400'} inline-block`} />
                         <span className="font-mono text-[10px] font-bold text-stone-500 uppercase tracking-wide">
-                          {isFirebaseConfigured ? 'Cloud Synced' : 'Local Storage Cache'}
+                          {isAwsConfigured ? 'Cloud Synced' : 'Local Storage Cache'}
                         </span>
                       </div>
                     </div>
@@ -300,7 +300,7 @@ export default function DbControlCenter({ orders, isOpen, onClose, onClearLocalC
 
             {/* Footer */}
             <div className="p-6 bg-stone-50 border-t border-stone-200 font-mono text-[10px] text-center text-stone-400 shrink-0">
-              Rakhi Crate Architecture Control Center • Powered by Gemini Engine
+              SendSmiles Architecture Control Center • Powered by Gemini Engine
             </div>
           </motion.div>
         </div>

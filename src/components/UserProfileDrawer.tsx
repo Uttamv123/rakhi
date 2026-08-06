@@ -49,10 +49,11 @@ export default function UserProfileDrawer({
   const { formatPrice } = useCurrency();
   const [activeTab, setActiveTab] = useState<'wishlist' | 'orders'>('wishlist');
 
-  // Auth view: 'signin' | 'signup'
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  // Auth view: 'signin' | 'signup' | 'verify'
+  const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'verify'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -88,17 +89,40 @@ export default function UserProfileDrawer({
           setEmail('');
           setPassword('');
         }, 1500);
-      } else {
-        await dbService.signUpWithEmail(email, password);
-        setSuccess('Account created and registered successfully!');
+      } else if (authMode === 'verify') {
+        await dbService.confirmSignUpCode(email, verificationCode);
+        setSuccess('Email verified! Signing you in...');
+        // Auto sign-in after verification
+        try {
+          await dbService.signInWithEmail(email, password);
+        } catch (e) {
+          // If auto sign-in fails, just let them sign in manually
+        }
         setTimeout(() => {
           setSuccess(null);
           setEmail('');
           setPassword('');
+          setVerificationCode('');
+          setAuthMode('signin');
         }, 1500);
+      } else {
+        await dbService.signUpWithEmail(email, password);
+        setSuccess('Verification code sent to your email! Please enter it below.');
+        setAuthMode('verify');
       }
     } catch (err: any) {
-      setError(err.message || 'Authentication failed. Please verify credentials.');
+      const message = err.message || 'Authentication failed. Please verify credentials.';
+      // If sign-in fails because user isn't verified, switch to verify mode
+      if (message.toLowerCase().includes('verify') || 
+          message.toLowerCase().includes('verification') || 
+          message.toLowerCase().includes('confirmed') ||
+          message.toLowerCase().includes('confirm')) {
+        setAuthMode('verify');
+        setSuccess('A verification code has been sent to your email. Enter it below.');
+        setError(null);
+      } else {
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -205,10 +229,12 @@ export default function UserProfileDrawer({
                   <div className="space-y-1">
                     <h3 className="font-serif text-base font-black italic text-primary flex items-center gap-2">
                       <Lock className="w-4 h-4 text-primary" />
-                      {authMode === 'signin' ? 'Sign In to Your Account' : 'Create Customer Account'}
+                      {authMode === 'verify' ? 'Verify Your Email' : authMode === 'signin' ? 'Sign In to Your Account' : 'Create Customer Account'}
                     </h3>
                     <p className="text-xs text-stone-500 leading-relaxed font-sans">
-                      {authMode === 'signin' 
+                      {authMode === 'verify'
+                        ? 'Enter the 6-digit code we sent to your email to complete verification.'
+                        : authMode === 'signin' 
                         ? 'Access your saved address book, real-time shipment map, and complete order history instantly.' 
                         : 'Register an account to sync custom Rakhi crates, earn festive rewards, and track shipping.'}
                     </p>
@@ -228,14 +254,19 @@ export default function UserProfileDrawer({
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           placeholder="your.name@example.co.uk"
-                          className="w-full pl-10 pr-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-hidden font-sans text-stone-800"
+                          disabled={authMode === 'verify'}
+                          className="w-full pl-10 pr-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-hidden font-sans text-stone-800 disabled:opacity-60"
                         />
                       </div>
                     </div>
 
-                    {/* Password Input */}
+                    {/* Password Input - hide during verify */}
+                    {authMode !== 'verify' && (
                     <div className="space-y-1 relative">
                       <label className="text-[10px] uppercase font-bold tracking-wider text-stone-500 font-mono">Password</label>
+                      {authMode === 'signup' && (
+                        <p className="text-[10px] text-stone-400 font-sans">Min 8 chars, with uppercase, lowercase, number & special symbol (!@#$%)</p>
+                      )}
                       <div className="relative">
                         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400">
                           <Lock className="w-4 h-4" />
@@ -250,6 +281,28 @@ export default function UserProfileDrawer({
                         />
                       </div>
                     </div>
+                    )}
+
+                    {/* Verification Code Input */}
+                    {authMode === 'verify' && (
+                    <div className="space-y-1 relative">
+                      <label className="text-[10px] uppercase font-bold tracking-wider text-stone-500 font-mono">Verification Code</label>
+                      <div className="relative">
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400">
+                          <CheckCircle2 className="w-4 h-4" />
+                        </span>
+                        <input 
+                          type="text"
+                          required
+                          value={verificationCode}
+                          onChange={(e) => setVerificationCode(e.target.value)}
+                          placeholder="Enter 6-digit code"
+                          maxLength={6}
+                          className="w-full pl-10 pr-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-hidden font-mono text-stone-800 tracking-widest text-center text-lg"
+                        />
+                      </div>
+                    </div>
+                    )}
 
                     <button 
                       type="submit"
@@ -260,7 +313,7 @@ export default function UserProfileDrawer({
                         <span>Validating Security...</span>
                       ) : (
                         <>
-                          <span>{authMode === 'signin' ? 'Sign In Securely' : 'Register Account'}</span>
+                          <span>{authMode === 'verify' ? 'Verify & Sign In' : authMode === 'signin' ? 'Sign In Securely' : 'Register Account'}</span>
                           <ArrowRight className="w-4 h-4" />
                         </>
                       )}
@@ -270,10 +323,15 @@ export default function UserProfileDrawer({
                   {/* Toggle Mode */}
                   <div className="pt-2 text-center border-t border-stone-100 mt-2">
                     <button 
-                      onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')}
+                      onClick={() => { setAuthMode(authMode === 'signin' ? 'signup' : 'signin'); setError(null); setSuccess(null); setVerificationCode(''); }}
                       className="text-primary hover:underline text-[11px] font-bold font-mono uppercase tracking-wide flex items-center justify-center gap-1 mx-auto cursor-pointer"
                     >
-                      {authMode === 'signin' ? (
+                      {authMode === 'verify' ? (
+                        <>
+                          <User className="w-3.5 h-3.5" />
+                          <span>Back to Sign In</span>
+                        </>
+                      ) : authMode === 'signin' ? (
                         <>
                           <UserPlus className="w-3.5 h-3.5" />
                           <span>New here? Create an Account</span>
@@ -581,7 +639,7 @@ export default function UserProfileDrawer({
 
             {/* Footer */}
             <div className="p-6 bg-stone-50 border-t border-stone-200 font-mono text-[9px] text-center text-stone-400 shrink-0">
-              Rakhi Crate • Handcrafted Hampers for UK Delivery
+              SendSmiles • Sending Smiles Across the World
             </div>
           </motion.div>
         </div>

@@ -215,7 +215,7 @@ export default function App() {
     const demoEmail1: SimulatedEmail = {
       id: 'demo-email-1',
       orderId: demoOrderId,
-      subject: `Order Confirmed: Rakhi Crate Gift #${demoOrderId} Registered`,
+      subject: `Order Confirmed: SendSmiles Gift #${demoOrderId} Registered`,
       sentAt: '10:15 AM',
       bodyHtml: `
         <div style="font-family: sans-serif; background-color: #fff8f7; padding: 20px;">
@@ -244,7 +244,7 @@ export default function App() {
           <div style="max-width: 500px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 2px solid #6e000a; overflow: hidden; padding: 24px;">
             <h2 style="color: #735c00; text-align: center; font-family: Georgia, serif;">Hand-Assembled with Love</h2>
             <p style="text-align: center; font-size: 13px;">Priya, our team in London has finished assembling your <strong>Heritage Pine Wood Crate</strong> with fresh Silver Kaju Katli, Laddus, and your custom letter card! Ready for Royal Mail collection.</p>
-            <p style="font-size: 11px; color: #888; text-align: center; margin-top: 20px;">Rakhi Crate Support team.</p>
+            <p style="font-size: 11px; color: #888; text-align: center; margin-top: 20px;">SendSmiles Support team.</p>
           </div>
         </div>
       `,
@@ -345,7 +345,7 @@ export default function App() {
     const firstEmail: SimulatedEmail = {
       id: `email-${Date.now()}`,
       orderId: newOrder.id,
-      subject: `Order Confirmed: Rakhi Crate Gift #${newOrder.id} Registered`,
+      subject: `Order Confirmed: SendSmiles Gift #${newOrder.id} Registered`,
       sentAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       bodyHtml: `
         <div style="font-family: sans-serif; background-color: #fff8f7; padding: 20px;">
@@ -357,7 +357,7 @@ export default function App() {
               <strong>UK Address:</strong> ${newOrder.shipping.addressLine1}, ${newOrder.shipping.city}<br/>
               <strong>Requested Delivery Date:</strong> ${newOrder.shipping.deliveryDate}
             </div>
-            <p style="font-size: 11px; color: #888; text-align: center; margin-top: 20px;">Rakhi Crate Ltd. London Operations.</p>
+            <p style="font-size: 11px; color: #888; text-align: center; margin-top: 20px;">SendSmiles Ltd. London Operations.</p>
           </div>
         </div>
       `,
@@ -425,7 +425,7 @@ export default function App() {
           
           {/* Brand Logo */}
           <a className="font-serif text-xl sm:text-2xl font-black italic text-primary tracking-tight shrink-0 flex items-center gap-1.5" href="#">
-            RAKHI CRATE
+            SENDSMILES
             <span className="hidden md:inline-block font-mono text-[9px] font-bold text-primary/80 bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded uppercase tracking-wider not-italic">
               🇬🇧 UK Hub
             </span>
@@ -932,7 +932,7 @@ export default function App() {
                 <h2 className="font-serif text-3xl sm:text-4xl font-black italic text-primary leading-tight">Celebrate the Eternal Bond</h2>
                 
                 <p className="text-sm text-charcoal-text/80 leading-relaxed font-sans">
-                  At Rakhi Crate, we believe the ritual of Raksha Bandhan is more than just a passing tradition—it is a timeless promise of protection, commitment, and love that transcends physical borders.
+                  At SendSmiles, we believe the ritual of Raksha Bandhan is more than just a passing tradition—it is a timeless promise of protection, commitment, and love that transcends physical borders.
                 </p>
                 <p className="text-xs text-charcoal-text/70 leading-relaxed font-sans">
                   Every customized crate we curate is a tribute to this sacred sister-brother connection. From hand-crafted premium zari threads to premium sweets prepared by heritage confectioners in India, we ensure that even if you are thousands of miles away, your protective prayers arrive safely, beautifully packed with heart.
@@ -1109,7 +1109,7 @@ export default function App() {
           <div className="max-w-container-max mx-auto px-margin-mobile md:px-gutter relative z-10 space-y-6">
             <h2 className="font-serif text-4xl font-black italic text-secondary-gold">The Festival is Approaching</h2>
             <p className="text-sm text-white/95 max-w-lg mx-auto font-sans">
-              Join the RAKHI CRATE community of over 12,000 global NRI siblings for early access to custom wooden crates, priority dispatch slots, and courier delivery alerts.
+              Join the SENDSMILES community of over 12,000 global NRI siblings for early access to custom wooden crates, priority dispatch slots, and courier delivery alerts.
             </p>
             
             <form onSubmit={(e) => { e.preventDefault(); alert("Wonderful! You've registered for VIP express dispatch updates."); }} className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
@@ -1141,9 +1141,9 @@ export default function App() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10 px-margin-mobile md:px-gutter py-12 max-w-container-max mx-auto text-xs">
           
           <div className="space-y-4">
-            <h3 className="font-serif text-lg font-black italic text-primary">RAKHI CRATE</h3>
+            <h3 className="font-serif text-lg font-black italic text-primary">SENDSMILES</h3>
             <p className="text-charcoal-text/75 leading-relaxed font-sans">
-              Premium festive gifting hand-assembled with heart and cultural heritage, delivered exclusively within the United Kingdom.
+              Sending smiles across the world — premium festive gifts hand-assembled with heart and cultural heritage, delivered exclusively within the United Kingdom.
             </p>
             <div className="flex gap-3">
               <button className="text-charcoal-text/70 hover:text-primary transition-colors p-2 rounded-lg bg-warm-cream border border-stone-100 cursor-pointer">
@@ -1188,7 +1188,7 @@ export default function App() {
         </div>
 
         <div className="border-t border-stone-100 py-6 px-margin-mobile md:px-gutter max-w-container-max mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] text-charcoal-text/50 font-mono">
-          <p>© 2026 Rakhi Crate Ltd. Premium Festive Gifting. UK Delivery Only. All Rights Reserved.</p>
+          <p>© 2026 SendSmiles Ltd. Sending Smiles Across the World. UK Delivery Only. All Rights Reserved.</p>
           <div className="flex gap-4">
             <a href="#" className="hover:text-primary">Privacy Policy</a>
             <a href="#" className="hover:text-primary">Terms of Service</a>
