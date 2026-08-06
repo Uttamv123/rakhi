@@ -51,7 +51,7 @@ export default function App() {
   const { currency, setCurrency, formatPrice, convertPrice, currentCurrencyConfig, CURRENCIES } = useCurrency();
   const { preCuratedGifts, standaloneThreads, rakhiThreads, premiumTreats, crateBoxStyles, isLoading, error, isFallback, retry } = useProducts();
   const [dismissedBanner, setDismissedBanner] = useState(false);
-  const [isVerified, setIsVerified] = useState(false);
+  const [isVerified, setIsVerified] = useState(true); // Age verification disabled
   const [cart, setCart] = useState<CartItem[]>([]);
   
   // Wishlist persistent collection state
@@ -398,9 +398,6 @@ export default function App() {
 
   return (
     <div className="bg-site-bg text-charcoal-text min-h-screen relative font-sans">
-      
-      {/* Age Verification Overlay Gate */}
-      <AgeVerificationModal onVerified={() => setIsVerified(true)} />
 
       {/* FIXED TOP NAVIGATION WITH ORGANIZED 2-TIER LAYOUT */}
       <header className="fixed top-0 w-full z-40 bg-white/95 backdrop-blur-md shadow-[0px_4px_20px_rgba(0,0,0,0.06)] border-b border-stone-200/80">
