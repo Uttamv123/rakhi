@@ -44,23 +44,7 @@ export default function CheckoutDrawer({ cart, onClose, onOrderCompleted, onClea
   const [city, setCity] = useState('');
   const [postcode, setPostcode] = useState('');
   const [country, setCountry] = useState('United Kingdom');
-  const [deliveryDate, setDeliveryDate] = useState('2026-08-27'); // Day before Raksha Bandhan
-
-  // Payment form state
-  const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'paypal'>('stripe');
-  
-  // Stripe Card state
-  const [cardName, setCardName] = useState('');
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCvv, setCardCvv] = useState('');
-  
-  // PayPal state
-  const [paypalAuthorized, setPaypalAuthorized] = useState(false);
-  const [showPaypalPopup, setShowPaypalPopup] = useState(false);
-  const [paypalEmail, setPaypalEmail] = useState('');
-  const [paypalPassword, setPaypalPassword] = useState('');
-  const [paypalAuthorizing, setPaypalAuthorizing] = useState(false);
+  const [deliveryDate, setDeliveryDate] = useState('2026-08-27');
 
   // Errors
   const [error, setError] = useState('');
@@ -72,29 +56,11 @@ export default function CheckoutDrawer({ cart, onClose, onOrderCompleted, onClea
   const shippingFee = cartTotal > 45 ? 0 : 3.99;
   const grandTotal = cartTotal + shippingFee;
 
-  const handleCardNumberChange = (value: string) => {
-    // Format card number with spaces every 4 digits
-    const cleaned = value.replace(/\D/g, '');
-    const formatted = cleaned.match(/.{1,4}/g)?.join(' ') || cleaned;
-    setCardNumber(formatted.substring(0, 19));
-  };
-
-  const handleExpiryChange = (value: string) => {
-    // Format expiry date as MM/YY
-    const cleaned = value.replace(/\D/g, '');
-    if (cleaned.length >= 2) {
-      setCardExpiry(`${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}`);
-    } else {
-      setCardExpiry(cleaned);
-    }
-  };
-
   const validateShipping = () => {
     if (!senderName || !senderEmail || !recipientName || !recipientPhone || !addressLine1 || !city || !postcode) {
       setError('Please fill in all required shipping and sender fields.');
       return false;
     }
-    // Check postcode structure roughly
     const postClean = postcode.trim().toUpperCase();
     if (postClean.length < 5) {
       setError('Please provide a valid UK Postcode (e.g. SW1A 1AA, M1 1AE).');
@@ -104,94 +70,88 @@ export default function CheckoutDrawer({ cart, onClose, onOrderCompleted, onClea
     return true;
   };
 
-  const validatePayment = () => {
-    if (paymentMethod === 'stripe') {
-      if (!cardName || cardNumber.length < 15 || cardExpiry.length < 5 || cardCvv.length < 3) {
-        setError('Please provide valid Stripe credit card details.');
-        return false;
-      }
-    } else {
-      if (!paypalAuthorized) {
-        setError('Please click the PayPal button to authorize your PayPal wallet.');
-        return false;
-      }
-    }
-    setError('');
-    return true;
+  const completeOrder = (paymentId: string) => {
+    const orderId = `SS-2026-${Math.floor(100000 + Math.random() * 900000)}`;
+    const timestamp = new Date().toLocaleString();
+
+    const newOrder: Order = {
+      id: orderId,
+      userId: userId,
+      createdAt: timestamp,
+      items: [...cart],
+      shipping: {
+        senderName,
+        senderEmail,
+        recipientName,
+        recipientPhone,
+        addressLine1,
+        addressLine2,
+        city,
+        postcode,
+        country,
+        deliveryDate
+      },
+      paymentMethod: 'stripe', // reusing existing type field
+      amount: grandTotal,
+      status: 'ordered',
+      timeline: [
+        { status: 'ordered', timestamp, title: 'Order Received', description: `Payment confirmed. Razorpay ID: ${paymentId}`, completed: true },
+        { status: 'assembled', timestamp: '--', title: 'Crate Customization', description: 'Gifts hand-assembled with wood wool padding.', completed: false },
+        { status: 'dispatched', timestamp: '--', title: 'Dispatched to Courier Hub', description: 'Handed over to Royal Mail Express Gifting.', completed: false },
+        { status: 'out-for-delivery', timestamp: '--', title: 'Out for Local Delivery', description: 'Courier carrying the crate to recipient\'s door.', completed: false },
+        { status: 'delivered', timestamp: '--', title: 'Delivered Successfully', description: 'The gift delivered and smiles shared.', completed: false }
+      ]
+    };
+
+    setGeneratedOrder(newOrder);
+    onOrderCompleted(newOrder);
+    onClearCart();
+    setStep(4);
   };
 
-  const handleProcessCheckout = async () => {
-    if (!validatePayment()) return;
+  const handleRazorpayPayment = () => {
+    setError('');
 
-    setStep(3); // Enter Processing mode
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => {
+      // Amount in paise (INR) — Razorpay works in smallest currency unit
+      // Converting GBP to INR approximately (1 GBP ≈ 107 INR) for test purposes
+      const amountInPaise = Math.round(grandTotal * 107 * 100);
 
-    // Simulated network delays for payment gateways
-    setTimeout(() => {
-      const orderId = `RC-2026-${Math.floor(100000 + Math.random() * 900000)}`;
-      const timestamp = new Date().toLocaleString();
-      
-      const newOrder: Order = {
-        id: orderId,
-        userId: userId,
-        createdAt: timestamp,
-        items: [...cart],
-        shipping: {
-          senderName,
-          senderEmail,
-          recipientName,
-          recipientPhone,
-          addressLine1,
-          addressLine2,
-          city,
-          postcode,
-          country,
-          deliveryDate
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: amountInPaise,
+        currency: 'INR',
+        name: 'SendSmiles',
+        description: `Gift Order – ${cart.length} item(s)`,
+        image: '/hero-rakhi.png',
+        prefill: {
+          name: senderName,
+          email: senderEmail,
+          contact: recipientPhone,
         },
-        paymentMethod,
-        amount: grandTotal,
-        status: 'ordered',
-        timeline: [
-          { status: 'ordered', timestamp, title: 'Order Received', description: 'Gifting request validated and secured.', completed: true },
-          { status: 'assembled', timestamp: '--', title: 'Crate Customization', description: 'Gifts hand-assembled with wood wool padding.', completed: false },
-          { status: 'dispatched', timestamp: '--', title: 'Dispatched to London Courier Hub', description: 'Handed over to Royal Mail Express Gifting.', completed: false },
-          { status: 'out-for-delivery', timestamp: '--', title: 'Out for Local Delivery', description: 'Courier carrying the crate to recipient\'s door.', completed: false },
-          { status: 'delivered', timestamp: '--', title: 'Delivered Successfully', description: 'The traditional thread tied and celebratory sweets shared.', completed: false }
-        ]
+        theme: { color: '#6e000a' },
+        handler: (response: { razorpay_payment_id: string }) => {
+          setStep(3);
+          setTimeout(() => completeOrder(response.razorpay_payment_id), 1500);
+        },
+        modal: {
+          ondismiss: () => {
+            setError('Payment was cancelled. Please try again.');
+          }
+        }
       };
 
-      setGeneratedOrder(newOrder);
-      onOrderCompleted(newOrder);
-      onClearCart();
-      setStep(4); // Receipt screen
-    }, 3000);
-  };
-
-  // PayPal popup handshakes
-  const handlePayPalAuthorize = () => {
-    setError('');
-    setShowPaypalPopup(true);
-  };
-
-  const submitPayPalMockLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!paypalEmail || !paypalPassword) {
-      alert("Please fill in PayPal Sandbox accounts credentials.");
-      return;
-    }
-    setPaypalAuthorizing(true);
-    setTimeout(() => {
-      setPaypalAuthorized(true);
-      setShowPaypalPopup(false);
-      setPaypalAuthorizing(false);
-    }, 1800);
-  };
-
-  // Detect card network logo
-  const getCardLogo = () => {
-    if (cardNumber.startsWith('4')) return 'Visa';
-    if (cardNumber.startsWith('5')) return 'MasterCard';
-    if (cardNumber.startsWith('3')) return 'Amex';
-    return 'Credit Card';
+      // @ts-ignore — Razorpay is loaded via CDN script
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    };
+    script.onerror = () => {
+      setError('Failed to load payment gateway. Please check your connection.');
+    };
+    document.body.appendChild(script);
   };
 
   return (
@@ -382,145 +342,38 @@ export default function CheckoutDrawer({ cart, onClose, onOrderCompleted, onClea
           {step === 2 && (
             <div className="space-y-6">
               <div className="border-b border-stone-100 pb-2">
-                <h3 className="font-serif text-xl font-black italic text-primary">Select International Gateway</h3>
-                <p className="text-xs text-charcoal-text/70 font-sans">All transactions are fully PCI-DSS compliant and encrypted via SSL.</p>
+                <h3 className="font-serif text-xl font-black italic text-primary">Secure Payment</h3>
+                <p className="text-xs text-charcoal-text/70 font-sans">All transactions are PCI-DSS compliant and encrypted via SSL.</p>
               </div>
 
-              {/* Toggle Stripe / PayPal */}
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('stripe')}
-                  className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all cursor-pointer ${
-                    paymentMethod === 'stripe'
-                      ? 'border-primary bg-primary/5 ring-2 ring-primary/10 text-primary'
-                      : 'border-stone-200 hover:border-stone-300 bg-warm-cream text-charcoal-text/50'
-                  }`}
-                >
+              {/* Razorpay Payment Button */}
+              <div className="bg-warm-cream p-6 rounded-xl border border-stone-200/60 text-center space-y-4 shadow-xs">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
                   <CreditCard className="w-6 h-6 text-primary" />
-                  <span className="text-xs font-bold text-charcoal-text">Stripe Checkout</span>
-                  <span className="text-[9px] text-charcoal-text/40 font-mono">Visa, MasterCard, Amex</span>
-                </button>
-
+                </div>
+                <div>
+                  <h4 className="font-serif font-black italic text-lg text-primary">Secure Payment via Razorpay</h4>
+                  <p className="text-xs text-charcoal-text/70 mt-1 font-sans">Pay with UPI, Cards, Net Banking, or Wallets</p>
+                </div>
+                <div className="text-2xl font-black font-mono text-primary">
+                  {formatPrice(grandTotal)}
+                </div>
                 <button
                   type="button"
-                  onClick={() => setPaymentMethod('paypal')}
-                  className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all cursor-pointer ${
-                    paymentMethod === 'paypal'
-                      ? 'border-primary bg-primary/5 ring-2 ring-primary/10 text-primary'
-                      : 'border-stone-200 hover:border-stone-300 bg-warm-cream text-charcoal-text/50'
-                  }`}
+                  onClick={handleRazorpayPayment}
+                  className="w-full bg-primary text-white py-4 rounded-lg font-bold text-sm uppercase tracking-widest hover:bg-primary/95 transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer font-mono"
                 >
-                  <DollarSign className="w-6 h-6 text-primary" />
-                  <span className="text-xs font-bold text-charcoal-text">PayPal Wallet</span>
-                  <span className="text-[9px] text-charcoal-text/40 font-mono">Fast secure authorization</span>
+                  <Lock className="w-4 h-4" /> Pay Securely Now
                 </button>
+                {error && <p className="text-red-500 text-xs font-sans">{error}</p>}
               </div>
 
-              {/* PAYMENT METHOD 1: Stripe Card Input */}
-              {paymentMethod === 'stripe' && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-warm-cream p-4 rounded-xl border border-stone-200/60 space-y-4 shadow-xs"
-                >
-                  <div className="flex justify-between items-center border-b border-stone-200/60 pb-2">
-                    <span className="text-[10px] font-bold uppercase text-primary tracking-wider flex items-center gap-1">
-                      <Lock className="w-3 h-3 text-primary" /> Secure Credit Card (Stripe)
-                    </span>
-                    <span className="text-[10px] font-bold text-primary font-mono uppercase bg-primary/5 px-2 py-0.5 rounded-lg border border-primary/20">
-                      {getCardLogo()}
-                    </span>
-                  </div>
-
-                  <div>
-                    <label className="block text-[9px] font-bold uppercase text-charcoal-text/70 mb-1">Cardholder Name *</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Priya Sharma"
-                      value={cardName}
-                      onChange={(e) => setCardName(e.target.value)}
-                      className="w-full px-3 py-2.5 border border-stone-200/60 bg-white text-charcoal-text rounded-lg text-xs focus:border-primary focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[9px] font-bold uppercase text-charcoal-text/70 mb-1">Card Number *</label>
-                    <input
-                      type="text"
-                      placeholder="4000 1234 5678 9010"
-                      value={cardNumber}
-                      onChange={(e) => handleCardNumberChange(e.target.value)}
-                      className="w-full px-3 py-2.5 border border-stone-200/60 bg-white text-charcoal-text rounded-lg text-xs focus:border-primary focus:outline-none font-mono"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[9px] font-bold uppercase text-charcoal-text/70 mb-1">Expiry Date *</label>
-                      <input
-                        type="text"
-                        placeholder="MM/YY"
-                        maxLength={5}
-                        value={cardExpiry}
-                        onChange={(e) => handleExpiryChange(e.target.value)}
-                        className="w-full text-center px-3 py-2.5 border border-stone-200/60 bg-white text-charcoal-text rounded-lg text-xs focus:border-primary focus:outline-none font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[9px] font-bold uppercase text-charcoal-text/70 mb-1">CVC / CVV *</label>
-                      <input
-                        type="password"
-                        placeholder="•••"
-                        maxLength={4}
-                        value={cardCvv}
-                        onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, ''))}
-                        className="w-full text-center px-3 py-2.5 border border-stone-200/60 bg-white text-charcoal-text rounded-lg text-xs focus:border-primary focus:outline-none font-mono"
-                      />
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* PAYMENT METHOD 2: PayPal */}
-              {paymentMethod === 'paypal' && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-warm-cream p-6 rounded-xl border border-stone-200/60 text-center space-y-4 shadow-xs"
-                >
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto text-primary">
-                    <DollarSign className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h4 className="font-serif font-black italic text-lg text-primary">PayPal Direct Gifting Check</h4>
-                    <p className="text-xs text-charcoal-text/70 mt-1 leading-relaxed font-sans">
-                      Click below to log in safely inside a secure simulated sandbox. No real funds are transferred during developer preview mode.
-                    </p>
-                  </div>
-
-                  {!paypalAuthorized ? (
-                    <button
-                      type="button"
-                      onClick={handlePayPalAuthorize}
-                      className="inline-flex items-center gap-2 bg-primary hover:bg-primary/95 text-white font-bold text-xs uppercase tracking-widest px-6 py-3.5 rounded-lg shadow-sm transition-all cursor-pointer"
-                    >
-                      Authorize PayPal Express
-                    </button>
-                  ) : (
-                    <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-lg inline-flex items-center gap-2 font-semibold font-sans">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" /> PayPal Wallet Authorized successfully!
-                    </div>
-                  )}
-                </motion.div>
-              )}
-
-              {/* Security Badge Info */}
+              {/* Security Badge */}
               <div className="bg-warm-cream p-4 rounded-xl border border-stone-200/60 flex gap-3">
                 <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                 <div className="text-[10px] text-charcoal-text/80 leading-relaxed font-sans">
-                  <span className="font-bold block text-emerald-700">Double-Layer Secure Encryption</span>
-                  Your payment details are processed instantly without being saved on this container. Secured by bank-grade 256-bit SSL handshakes.
+                  <span className="font-bold block text-emerald-700">256-bit SSL Encrypted</span>
+                  Powered by Razorpay. Your payment details are never stored on our servers.
                 </div>
               </div>
             </div>
@@ -659,7 +512,7 @@ export default function CheckoutDrawer({ cart, onClose, onOrderCompleted, onClea
                   </button>
                   <button
                     type="button"
-                    onClick={handleProcessCheckout}
+                    onClick={handleRazorpayPayment}
                     className="bg-primary text-white py-3 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-primary/95 transition-all shadow-md flex items-center justify-center gap-1 cursor-pointer"
                   >
                     Pay {formatPrice(grandTotal)} <Lock className="w-3.5 h-3.5 text-white" />
@@ -671,79 +524,6 @@ export default function CheckoutDrawer({ cart, onClose, onOrderCompleted, onClea
         )}
       </motion.div>
 
-      {/* PAYPAL POPUP MODAL SIMULATION */}
-      <AnimatePresence>
-        {showPaypalPopup && (
-          <div id="paypal-sandbox-popup" className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-            {/* Dark modal overlay */}
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowPaypalPopup(false)} />
-            
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white w-full max-w-md rounded-2xl shadow-2xl border-t-4 border-primary p-6 relative z-10 text-left border border-stone-100"
-            >
-              {/* Header */}
-              <div className="flex justify-between items-center border-b border-stone-200 pb-4 mb-4 font-sans">
-                <span className="font-serif italic font-black text-primary text-xl">PayPal Sandbox</span>
-                <span className="text-[10px] bg-primary/10 text-primary font-bold px-2 py-0.5 rounded-lg uppercase font-mono">Developer Mode</span>
-              </div>
-
-              <form onSubmit={submitPayPalMockLogin} className="space-y-4">
-                <p className="text-xs text-charcoal-text/80 leading-relaxed font-sans">
-                  Log in to your PayPal developer sandbox account to authorize this gift transaction of <span className="font-bold text-primary">{formatPrice(grandTotal)}</span>.
-                </p>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-charcoal-text/50 uppercase mb-1 font-mono">Sandbox Email Address</label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="e.g. buyer-test@paypal.com"
-                    value={paypalEmail}
-                    onChange={(e) => setPaypalEmail(e.target.value)}
-                    className="w-full px-3 py-2 border border-stone-200 rounded-lg bg-warm-cream text-charcoal-text text-xs font-mono focus:outline-none focus:border-primary"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-charcoal-text/50 uppercase mb-1 font-mono">Sandbox Password</label>
-                  <input
-                    type="password"
-                    required
-                    placeholder="••••••••"
-                    value={paypalPassword}
-                    onChange={(e) => setPaypalPassword(e.target.value)}
-                    className="w-full px-3 py-2 border border-stone-200 rounded-lg bg-warm-cream text-charcoal-text text-xs focus:outline-none focus:border-primary"
-                  />
-                </div>
-
-                <div className="bg-warm-cream border border-stone-100 p-2.5 rounded-lg text-[10px] text-primary leading-normal font-sans">
-                  💡 Tip: Enter any demo credentials (e.g. <strong>test@paypal.com</strong> / <strong>test1234</strong>) to simulate a high-speed authorization hook!
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2 font-mono">
-                  <button
-                    type="button"
-                    onClick={() => setShowPaypalPopup(false)}
-                    className="px-4 py-2 text-xs font-semibold text-charcoal-text/50 hover:text-charcoal-text hover:bg-stone-50 rounded-lg transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={paypalAuthorizing}
-                    className="bg-primary text-white px-5 py-2 rounded-lg text-xs font-bold hover:bg-primary/95 transition-all flex items-center gap-1.5 cursor-pointer"
-                  >
-                    {paypalAuthorizing ? "Authorizing..." : "Agree & Continue"}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
