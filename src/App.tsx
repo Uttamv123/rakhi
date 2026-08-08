@@ -815,7 +815,7 @@ export default function App() {
                       {gift.images && gift.images.length > 1 ? (
                         <ProductImageCarousel images={gift.images} alt={gift.name} />
                       ) : (
-                        <img src={gift.image} alt={gift.name} className="w-full h-full object-cover hover:scale-[1.03] transition-all" />
+                        <img src={gift.image} alt={gift.name} className="w-full h-full object-cover hover:scale-[1.03] transition-all" loading="lazy" />
                       )}
                       {gift.badge && (
                         <span className="absolute top-3 left-3 bg-primary text-white font-black text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-md font-mono z-10">
