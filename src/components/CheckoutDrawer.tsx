@@ -133,9 +133,36 @@ export default function CheckoutDrawer({ cart, onClose, onOrderCompleted, onClea
           contact: recipientPhone,
         },
         theme: { color: '#6e000a' },
-        handler: (response: { razorpay_payment_id: string }) => {
+        handler: async (response: { razorpay_payment_id: string; razorpay_order_id?: string; razorpay_signature?: string }) => {
           setStep(3);
-          setTimeout(() => completeOrder(response.razorpay_payment_id), 1500);
+
+          // Verify payment with backend if signature is available
+          if (response.razorpay_order_id && response.razorpay_signature) {
+            try {
+              const verifyRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/verify-payment`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_signature: response.razorpay_signature
+                })
+              });
+              const data = await verifyRes.json();
+              if (data.verified) {
+                completeOrder(response.razorpay_payment_id);
+              } else {
+                setStep(2);
+                setError('Payment verification failed. Please contact support.');
+              }
+            } catch {
+              // If verification call fails, still complete order (payment was taken)
+              completeOrder(response.razorpay_payment_id);
+            }
+          } else {
+            // No signature in test mode — complete order directly
+            setTimeout(() => completeOrder(response.razorpay_payment_id), 1500);
+          }
         },
         modal: {
           ondismiss: () => {
