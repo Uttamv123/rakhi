@@ -10,7 +10,6 @@ import {
   Truck, 
   User, 
   ArrowRight, 
-  Star, 
   Sparkles, 
   Package, 
   Lock, 
@@ -31,7 +30,6 @@ import {
 } from 'lucide-react';
 
 import AgeVerificationModal from './components/AgeVerificationModal';
-import CustomizeCrateBuilder from './components/CustomizeCrateBuilder';
 import CheckoutDrawer from './components/CheckoutDrawer';
 import OrderTracker from './components/OrderTracker';
 import PersonalizeCardModal from './components/PersonalizeCardModal';
@@ -40,7 +38,7 @@ import UserProfileDrawer from './components/UserProfileDrawer';
 import FAQSection from './components/FAQSection';
 import SearchBar from './components/SearchBar';
 
-import { HERO_IMAGES, RELATION_IMAGES, PANTRY_IMAGES } from './data';
+import { HERO_IMAGES, PANTRY_IMAGES } from './data';
 import { useProducts } from './hooks/useProducts';
 import { CartItem, Order, SimulatedEmail, StandaloneThreadItem, WishlistItem } from './types';
 import { dbService } from './dbService';
@@ -111,8 +109,6 @@ export default function App() {
   };
 
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [showCrateBuilder, setShowCrateBuilder] = useState(false);
-  const [crateBuilderInitialFilter, setCrateBuilderInitialFilter] = useState<'all' | 'brother' | 'kids' | 'bhaiya-bhabhi'>('all');
   const [showCheckout, setShowCheckout] = useState(false);
   
   // Real-time card personalization state
@@ -138,8 +134,12 @@ export default function App() {
 
   // Initialize and load from dbService
   useEffect(() => {
+    // Use a ref to track latest user inside callbacks without stale closure
+    const currentUserRef = { value: null as any };
+
     // Sync auth state
     const unsubscribeAuth = dbService.onAuthStateChanged((user) => {
+      currentUserRef.value = user;
       setCurrentUser(user);
       // Load cart for this user
       dbService.getCart(user.uid).then((savedCart) => {
@@ -151,12 +151,16 @@ export default function App() {
 
     // Subscribe to real-time orders
     const unsubscribeOrders = dbService.subscribeToOrders((fetchedOrders) => {
-      if (fetchedOrders.length === 0) {
-        // Seed default order
+      // Only seed a demo order for anonymous/guest users with no orders
+      const user = currentUserRef.value;
+      const isAnonymous = !user || user.isAnonymous;
+      if (fetchedOrders.length === 0 && isAnonymous) {
+        // Seed default demo order for guest view only
         const demoOrderId = 'RC-2026-102941';
         const timestamp = new Date(Date.now() - 3600000).toLocaleString(); // 1 hour ago
         const demoOrder: Order = {
           id: demoOrderId,
+          userId: 'demo-user-123',
           createdAt: timestamp,
           items: [
             {
@@ -411,10 +415,6 @@ export default function App() {
           <span className="hidden sm:flex items-center gap-1 font-medium">
             <Sparkles className="w-3 h-3 text-secondary-gold" /> Complimentary Personalized Calligraphy Gift Card
           </span>
-          <span className="hidden lg:inline text-white/30">•</span>
-          <span className="hidden lg:flex items-center gap-1 font-medium">
-            <Star className="w-3 h-3 text-secondary-gold fill-secondary-gold stroke-[0]" /> Rated 4.9/5 by 12,000+ NRI Siblings
-          </span>
         </div>
 
         {/* ROW 1: Logo, Search Bar & Main Action Controls */}
@@ -433,7 +433,6 @@ export default function App() {
             <SearchBar 
               formatPrice={formatPrice}
               onAddToCart={(item) => { setShowProducts(true); handleAddToCart(item); }}
-              onOpenCrateBuilder={() => { setShowProducts(true); setShowCrateBuilder(true); }}
               preCuratedGifts={preCuratedGifts}
               standaloneThreads={standaloneThreads}
               rakhiThreads={rakhiThreads}
@@ -577,16 +576,10 @@ export default function App() {
               
               <div className="flex flex-wrap gap-4 pt-2">
                 <button 
-                  onClick={() => setShowCrateBuilder(true)}
+                  onClick={() => setShowProducts(true)}
                   className="bg-primary text-white px-8 py-4 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-primary/90 active:scale-95 transition-all shadow-md cursor-pointer flex items-center gap-2"
                 >
-                  Customize Crate Option <Sparkles className="w-4 h-4 text-white" />
-                </button>
-                <button 
-                  onClick={() => setShowProducts(true)}
-                  className="border border-primary text-primary px-8 py-4 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-primary/5 transition-all text-center flex items-center justify-center cursor-pointer"
-                >
-                  View All Gifts
+                  View All Gifts <ArrowRight className="w-4 h-4 text-white" />
                 </button>
               </div>
             </div>
@@ -611,7 +604,7 @@ export default function App() {
             <div className="grid md:grid-cols-3 gap-8 items-stretch">
               
               <div className="flex flex-col items-center text-center p-6 space-y-2">
-                <span className="material-symbols-outlined text-4xl text-primary mb-2">public</span>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-10 h-10 text-primary mb-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                 <h3 className="font-serif text-lg font-black italic text-primary">Global Access</h3>
                 <p className="text-xs text-charcoal-text/80 max-w-xs leading-relaxed font-sans">
                   Seamless ordering from India, USA, Canada, Australia, or anywhere you call home. Secure currency checkouts.
@@ -619,7 +612,7 @@ export default function App() {
               </div>
 
               <div className="flex flex-col items-center text-center p-8 space-y-2 bg-warm-cream rounded-2xl shadow-md scale-105 border border-primary/20 relative">
-                <span className="material-symbols-outlined text-4xl text-primary mb-2">local_shipping</span>
+                <Truck className="w-10 h-10 text-primary mb-2" />
                 <h3 className="font-serif text-lg font-black italic text-primary">UK Exclusive Soul</h3>
                 <p className="text-xs text-charcoal-text/80 max-w-xs leading-relaxed font-sans">
                   We specialize in UK distribution centers. Rapid 24-48h courier dispatch ensuring sweets stay exceptionally fresh.
@@ -630,7 +623,7 @@ export default function App() {
               </div>
 
               <div className="flex flex-col items-center text-center p-6 space-y-2">
-                <span className="material-symbols-outlined text-4xl text-primary mb-2">auto_awesome</span>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-10 h-10 text-primary mb-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                 <h3 className="font-serif text-lg font-black italic text-primary">Artisanal Quality</h3>
                 <p className="text-xs text-charcoal-text/80 max-w-xs leading-relaxed font-sans">
                   Handpicked threads decorated with American diamonds and sandalwood beads. Authentically packed.
@@ -673,103 +666,6 @@ export default function App() {
             </div>
           </div>
         )}
-
-        {/* SHOP BY RELATION (CRATES LINKED TO CUSTOMIZER) */}
-        <section className="py-20 bg-site-bg" id="relation-crates">
-          <div className="max-w-container-max mx-auto px-margin-mobile md:px-gutter">
-            <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
-              <div>
-                <span className="text-primary text-xs font-bold uppercase tracking-widest block font-mono">The Perfect Bond</span>
-                <h2 className="font-serif text-3xl font-black italic text-primary mt-1">Shop Rakhi by Relation</h2>
-              </div>
-              <button 
-                onClick={() => {
-                  setCrateBuilderInitialFilter('all');
-                  setShowCrateBuilder(true);
-                }}
-                className="text-primary hover:underline font-bold text-xs uppercase tracking-widest flex items-center gap-1 font-mono cursor-pointer"
-              >
-                Custom Design Crate <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              
-              {/* Brother Crate */}
-              <div 
-                onClick={() => {
-                  setCrateBuilderInitialFilter('brother');
-                  setShowCrateBuilder(true);
-                }}
-                className="group relative overflow-hidden rounded-2xl bg-white shadow-sm hover:shadow-xl transition-all duration-300 border border-stone-100 hover:border-primary/40 cursor-pointer"
-              >
-                <div className="aspect-[1.37] overflow-hidden bg-warm-cream">
-                  <img 
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
-                    alt="For Brother Collection" 
-                    src={RELATION_IMAGES.brother}
-                  />
-                </div>
-                <div className="p-6 text-center">
-                  <h4 className="font-serif text-lg font-black italic text-charcoal-text">For Brother</h4>
-                  <p className="text-charcoal-text/70 text-xs mt-1 mb-4">Timeless designs for a lifelong bond.</p>
-                  <span className="inline-block text-primary border-b border-primary/30 group-hover:border-primary pb-0.5 font-bold text-xs uppercase tracking-widest transition-all">
-                    Launch Crate Builder
-                  </span>
-                </div>
-              </div>
-
-              {/* Kids Crate */}
-              <div 
-                onClick={() => {
-                  setCrateBuilderInitialFilter('kids');
-                  setShowCrateBuilder(true);
-                }}
-                className="group relative overflow-hidden rounded-2xl bg-white shadow-sm hover:shadow-xl transition-all duration-300 border border-stone-100 hover:border-primary/40 cursor-pointer"
-              >
-                <div className="aspect-[1.37] overflow-hidden bg-warm-cream">
-                  <img 
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
-                    alt="For Kids Collection" 
-                    src={RELATION_IMAGES.kids}
-                  />
-                </div>
-                <div className="p-6 text-center">
-                  <h4 className="font-serif text-lg font-black italic text-charcoal-text">For Kids</h4>
-                  <p className="text-charcoal-text/70 text-xs mt-1 mb-4">Cartoon &amp; playful threads for little ones.</p>
-                  <span className="inline-block text-primary border-b border-primary/30 group-hover:border-primary pb-0.5 font-bold text-xs uppercase tracking-widest transition-all">
-                    Launch Crate Builder
-                  </span>
-                </div>
-              </div>
-
-              {/* Bhaiya Bhabhi Couple Crate */}
-              <div 
-                onClick={() => {
-                  setCrateBuilderInitialFilter('bhaiya-bhabhi');
-                  setShowCrateBuilder(true);
-                }}
-                className="group relative overflow-hidden rounded-2xl bg-white shadow-sm hover:shadow-xl transition-all duration-300 border border-stone-100 hover:border-primary/40 cursor-pointer"
-              >
-                <div className="aspect-[1.37] overflow-hidden bg-warm-cream">
-                  <img 
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
-                    alt="For Bhaiya Bhabhi couple collection" 
-                    src={RELATION_IMAGES.couple}
-                  />
-                </div>
-                <div className="p-6 text-center">
-                  <h4 className="font-serif text-lg font-black italic text-charcoal-text">For Bhaiya Bhabhi</h4>
-                  <p className="text-charcoal-text/70 text-xs mt-1 mb-4">Elegant sets for the cherished couple.</p>
-                  <span className="inline-block text-primary border-b border-primary/30 group-hover:border-primary pb-0.5 font-bold text-xs uppercase tracking-widest transition-all">
-                    Launch Crate Builder
-                  </span>
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </section>
 
         {/* PRE-CURATED CRATES SHELF (FOR FAST SHOPPING) */}
         <section className="py-20 bg-[#F5F2EB]" id="pre-curated-racks">
@@ -932,18 +828,8 @@ export default function App() {
                   At SendSmiles, we believe the ritual of Raksha Bandhan is more than just a passing tradition—it is a timeless promise of protection, commitment, and love that transcends physical borders.
                 </p>
                 <p className="text-xs text-charcoal-text/70 leading-relaxed font-sans">
-                  Every customized crate we curate is a tribute to this sacred sister-brother connection. From hand-crafted premium zari threads to premium sweets prepared by heritage confectioners in India, we ensure that even if you are thousands of miles away, your protective prayers arrive safely, beautifully packed with heart.
+                  Every gift we curate is a tribute to this sacred sister-brother connection. From hand-crafted premium zari threads to premium sweets prepared by heritage confectioners in India, we ensure that even if you are thousands of miles away, your protective prayers arrive safely, beautifully packed with heart.
                 </p>
-                
-                <div className="pt-2">
-                  <button 
-                    onClick={() => setShowCrateBuilder(true)}
-                    className="inline-flex items-center gap-2 text-primary hover:text-primary/80 font-bold text-xs uppercase tracking-widest cursor-pointer"
-                  >
-                    Personalize a Gift Crate Now
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
               </div>
 
             </div>
@@ -1044,61 +930,6 @@ export default function App() {
 
 
 
-        {/* CUSTOMER REVIEWS (VOICE OF OUR CRATE FAMILY) */}
-        <section className="py-20 bg-site-bg border-t border-stone-100">
-          <div className="max-w-container-max mx-auto px-margin-mobile md:px-gutter">
-            
-            <div className="flex items-center gap-4 mb-12">
-              <div className="h-px bg-stone-200/60 flex-1" />
-              <h2 className="font-serif text-3xl font-black italic text-primary px-4 whitespace-nowrap">Voice of our Crate Family</h2>
-              <div className="h-px bg-stone-200/60 flex-1" />
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-6">
-              
-              <div className="bg-white p-6 rounded-2xl relative border border-stone-100 space-y-4 shadow-sm">
-                <div className="flex gap-1 text-primary">
-                  {[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4 fill-primary stroke-[0]" />)}
-                </div>
-                <p className="text-xs text-charcoal-text/85 leading-relaxed italic font-sans">
-                  "I recently ordered a custom pine box for my brother Rahul in Manchester. He was amazed at how fresh the Kaju Katli tasted and how beautiful the gold Ganesha thread was. Royal Mail delivered it exactly on our requested date."
-                </p>
-                <div>
-                  <span className="font-bold text-xs text-primary block">Annie S.</span>
-                  <span className="text-[10px] text-charcoal-text/40 font-mono">14 July • Verified Buyer</span>
-                </div>
-              </div>
-
-              <div className="bg-white p-6 rounded-2xl relative border border-primary/30 space-y-4 shadow-md">
-                <div className="flex gap-1 text-primary">
-                  {[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4 fill-primary stroke-[0]" />)}
-                </div>
-                <p className="text-xs text-charcoal-text/85 leading-relaxed italic font-sans">
-                  "The interactive preview is fantastic! Seeing the custom Ganesha card print layout in real-time made me feel confident. The emails triggered on each transit checkpoint were so comforting."
-                </p>
-                <div>
-                  <span className="font-bold text-xs text-primary block">Anjali K.</span>
-                  <span className="text-[10px] text-charcoal-text/40 font-mono">14 July • NRI Sibling</span>
-                </div>
-              </div>
-
-              <div className="bg-white p-6 rounded-2xl relative border border-stone-100 space-y-4 shadow-sm">
-                <div className="flex gap-1 text-primary">
-                  {[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4 fill-primary stroke-[0]" />)}
-                </div>
-                <p className="text-xs text-charcoal-text/85 leading-relaxed italic font-sans">
-                  "Incredibly premium packaging! The wood wool bedding and envelope wax stamp feels so royal. Much higher quality than standard cardboard courier mailers. Highly recommended for international NRIs."
-                </p>
-                <div>
-                  <span className="font-bold text-xs text-primary block">Bhumi R.</span>
-                  <span className="text-[10px] text-charcoal-text/40 font-mono">14 July • Verified Buyer</span>
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </section>
-
         {/* NEWSLETTER CAPTURE */}
         <section className="bg-primary py-16 text-white text-center relative overflow-hidden border-t border-primary/20">
           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#C4A484_1px,transparent_1px)] bg-[size:16px_16px] pointer-events-none" />
@@ -1128,7 +959,6 @@ export default function App() {
 
         {/* FREQUENTLY ASKED QUESTIONS SECTION */}
         <FAQSection 
-          onOpenCrateBuilder={() => setShowCrateBuilder(true)}
           onOpenTracker={() => setShowTracker(true)}
         />
       </main>
@@ -1155,9 +985,7 @@ export default function App() {
           <div className="space-y-3">
             <h4 className="font-bold text-xs text-primary uppercase tracking-widest font-sans">Collections</h4>
             <ul className="space-y-2 text-charcoal-text/75 font-mono text-[11px]">
-              <li><button onClick={() => setShowCrateBuilder(true)} className="hover:text-primary transition-colors cursor-pointer text-left">Crate Customizer</button></li>
               <li><a href="#pre-curated-racks" className="hover:text-primary transition-colors">Festive Hampers</a></li>
-              <li><a href="#festive-pantry-rack" className="hover:text-primary transition-colors">Traditional Sweets</a></li>
               <li><a href="#relation-crates" className="hover:text-primary transition-colors">Browse by Sibling Relation</a></li>
             </ul>
           </div>
@@ -1168,7 +996,6 @@ export default function App() {
               <li><a href="#faq-section" className="hover:text-primary transition-colors">Frequently Asked Questions (FAQ)</a></li>
               <li><a href="#faq-section" className="hover:text-primary transition-colors">UK Express Delivery (24-72 hrs)</a></li>
               <li><button onClick={() => setShowTracker(true)} className="hover:text-primary transition-colors cursor-pointer text-left bg-transparent border-none outline-hidden">Track Shipment Route</button></li>
-              <li><button onClick={() => setShowCrateBuilder(true)} className="hover:text-primary transition-colors cursor-pointer text-left bg-transparent border-none outline-hidden">Custom Thread Requests</button></li>
             </ul>
           </div>
 
@@ -1192,20 +1019,6 @@ export default function App() {
           </div>
         </div>
       </footer>
-
-      {/* INTERACTIVE CUSTOMIZER CRATE BUILDER MODAL */}
-      <AnimatePresence>
-        {showCrateBuilder && (
-          <CustomizeCrateBuilder 
-            onCrateAdded={handleAddToCart}
-            onClose={() => setShowCrateBuilder(false)}
-            initialRelationFilter={crateBuilderInitialFilter}
-            rakhiThreads={rakhiThreads}
-            premiumTreats={premiumTreats}
-            crateBoxStyles={crateBoxStyles}
-          />
-        )}
-      </AnimatePresence>
 
       {/* SECURE CHECKOUT DRAWER */}
       <AnimatePresence>
@@ -1253,10 +1066,10 @@ export default function App() {
                     <ShoppingBag className="w-12 h-12 text-stone-300" />
                     <p className="text-xs text-stone-400 italic">Your basket is empty.</p>
                     <button 
-                      onClick={() => { setIsCartOpen(false); setShowCrateBuilder(true); }}
+                      onClick={() => { setIsCartOpen(false); setShowProducts(true); }}
                       className="text-xs font-bold text-primary underline uppercase tracking-widest cursor-pointer font-mono"
                     >
-                      Design a custom crate now
+                      Browse our gifts
                     </button>
                   </div>
                 ) : (
@@ -1401,6 +1214,7 @@ export default function App() {
         onAddSimulatedEmail={addSimulatedEmail}
         emails={emails}
         onMarkEmailRead={markEmailRead}
+        currentUser={currentUser}
       />
 
       {/* FLOATING SCROLL TO TOP BUTTON */}

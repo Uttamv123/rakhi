@@ -1,0 +1,82 @@
+[
+  {
+    "productId": "RK001",
+    "name": "Classic Rakhi & Kaju Katli Box",
+    "slug": "classic-rakhi-kaju-katli-box",
+    "description": "Celebrate Raksha Bandhan with a handcrafted Rakhi paired with premium Kaju Katli in a luxury gift box.",
+    "price": 22.99,
+    "currency": "GBP",
+    "category": "Gift Boxes",
+    "stock": 100,
+    "featured": true,
+    "isActive": true,
+    "imageKeys": [
+      "products/RK001/image1.webp",
+      "products/RK001/image2.webp"
+    ]
+  },
+  {
+    "productId": "RK002",
+    "name": "Premium Rakhi & Dry Fruit Box",
+    "slug": "premium-rakhi-dry-fruit-box",
+    "description": "Premium Rakhi with a luxury assortment of almonds, cashews, pistachios and raisins.",
+    "price": 24.99,
+    "currency": "GBP",
+    "category": "Gift Boxes",
+    "stock": 100,
+    "featured": true,
+    "isActive": true,
+    "imageKeys": [
+      "products/RK002/image1.webp",
+      "products/RK002/image2.webp"
+    ]
+  },
+  {
+    "productId": "RK003",
+    "name": "Rakhi & Assorted Mithai Box",
+    "slug": "rakhi-assorted-mithai-box",
+    "description": "A festive Rakhi gift box featuring a premium Rakhi with a delicious assortment of traditional Indian sweets.",
+    "price": 23.99,
+    "currency": "GBP",
+    "category": "Gift Boxes",
+    "stock": 100,
+    "featured": false,
+    "isActive": true,
+    "imageKeys": [
+      "products/RK003/image1.webp",
+      "products/RK003/image2.webp"
+    ]
+  },
+  {
+    "productId": "RK004",
+    "name": "Rakhi & Chocolate Celebration Box",
+    "slug": "rakhi-chocolate-celebration-box",
+    "description": "Celebrate Raksha Bandhan with a premium Rakhi and a delightful selection of chocolates.",
+    "price": 22.99,
+    "currency": "GBP",
+    "category": "Gift Boxes",
+    "stock": 100,
+    "featured": false,
+    "isActive": true,
+    "imageKeys": [
+      "products/RK004/image1.webp",
+      "products/RK004/image2.webp"
+    ]
+  },
+  {
+    "productId": "RK005",
+    "name": "Rakhi & Healthy Nut Collection",
+    "slug": "rakhi-healthy-nut-collection",
+    "description": "A thoughtful Rakhi gift featuring premium mixed nuts and a beautifully handcrafted Rakhi.",
+    "price": 23.99,
+    "currency": "GBP",
+    "category": "Gift Boxes",
+    "stock": 100,
+    "featured": false,
+    "isActive": true,
+    "imageKeys": [
+      "products/RK005/image1.webp",
+      "products/RK005/image2.webp"
+    ]
+  }
+]

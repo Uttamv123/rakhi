@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronDown, HelpCircle, Truck, MapPin, Sparkles, Clock, Package, MessageSquare } from 'lucide-react';
+import { ChevronDown, HelpCircle, Truck, MapPin, Clock, MessageSquare } from 'lucide-react';
 
 interface FAQItem {
   id: string;
-  category: 'shipping' | 'custom' | 'ordering';
+  category: 'shipping' | 'ordering';
   question: string;
   answer: string;
   highlight?: string;
@@ -16,7 +16,7 @@ const FAQ_DATA: FAQItem[] = [
     id: 'shipping-time',
     category: 'shipping',
     question: 'What are your delivery times across the UK?',
-    answer: 'We dispatch all festive hampers and sacred thread orders directly from our UK distribution hub. Our guaranteed express delivery timeframe is 24 to 72 hours across England, Scotland, Wales, and Northern Ireland. Sweets are freshly sealed prior to dispatch to ensure pristine quality upon arrival.',
+    answer: 'We dispatch all festive hampers and sacred thread orders directly from our UK distribution hub. Our guaranteed express delivery timeframe is 24 to 72 hours across England, Scotland, Wales, and Northern Ireland.',
     highlight: '24–72 Hours Express Delivery',
     icon: Clock,
   },
@@ -29,39 +29,22 @@ const FAQ_DATA: FAQItem[] = [
     icon: MapPin,
   },
   {
-    id: 'custom-thread-requests',
-    category: 'custom',
-    question: 'How do custom thread & crate requests work?',
-    answer: 'You can design a bespoke gift box using our interactive Crate Customizer! Select your choice of artisanal threads (such as 24K Gold Ganesha, Zardosi, Sandalwood, Lumba sets, or cartoon Rakhi threads for kids), add gourmet sweets or chocolates, and write a personalized gift card. For special bulk or custom thread arrangements, our support team is happy to assist.',
-    highlight: 'Interactive Crate Builder & Custom Threads',
-    icon: Sparkles,
-  },
-  {
-    id: 'sweets-freshness',
-    category: 'ordering',
-    question: 'How do you guarantee the freshness of sweets in transit?',
-    answer: 'All traditional Indian mithai (Silver Kaju Katli, Saffron Motichoor Laddus, Besan Barfi) are handcrafted in small batches, vacuum-sealed in food-grade protective containers, and cushioned inside pine wood wool padding inside our sturdy crates to preserve taste and texture.',
-    highlight: 'Vacuum-Sealed Food-Grade Packaging',
-    icon: Package,
-  },
-  {
     id: 'order-tracking',
     category: 'ordering',
     question: 'How do I track my delivery status?',
-    answer: 'As soon as your crate is assembled and dispatched, you can track its journey in real time. Simply click "Shipment Tracker" in the top navigation bar to view your live courier status, tracking code, and timeline updates.',
+    answer: 'As soon as your order is dispatched, you can track its journey in real time. Simply click "Shipment Tracker" in the top navigation bar, log in to your account, and view your live courier status, tracking code, and timeline updates.',
     highlight: 'Live Real-Time Courier Tracking',
     icon: Truck,
   },
 ];
 
 interface FAQSectionProps {
-  onOpenCrateBuilder?: () => void;
   onOpenTracker?: () => void;
 }
 
-export default function FAQSection({ onOpenCrateBuilder, onOpenTracker }: FAQSectionProps) {
+export default function FAQSection({ onOpenTracker }: FAQSectionProps) {
   const [openId, setOpenId] = useState<string | null>('shipping-time');
-  const [activeCategory, setActiveCategory] = useState<'all' | 'shipping' | 'custom' | 'ordering'>('all');
+  const [activeCategory, setActiveCategory] = useState<'all' | 'shipping' | 'ordering'>('all');
 
   const toggleItem = (id: string) => {
     setOpenId(openId === id ? null : id);
@@ -87,7 +70,7 @@ export default function FAQSection({ onOpenCrateBuilder, onOpenTracker }: FAQSec
           </h2>
           
           <p className="text-xs md:text-sm text-charcoal-text/80 leading-relaxed font-sans">
-            Find quick answers regarding our UK delivery turnaround, global order access, custom thread combinations, and sweet freshness guarantees.
+            Find quick answers regarding our UK delivery turnaround, global order access, and order tracking.
           </p>
 
           {/* Quick Highlight Cards */}
@@ -114,11 +97,11 @@ export default function FAQSection({ onOpenCrateBuilder, onOpenTracker }: FAQSec
 
             <div className="bg-white p-3.5 rounded-xl border border-stone-200/60 shadow-xs flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                <Sparkles className="w-4 h-4 text-primary" />
+                <Truck className="w-4 h-4 text-primary" />
               </div>
               <div>
-                <span className="text-[10px] font-bold text-primary block uppercase tracking-wider">Custom Threads</span>
-                <span className="text-xs font-black text-charcoal-text">Personalized Crates</span>
+                <span className="text-[10px] font-bold text-primary block uppercase tracking-wider">Live Tracking</span>
+                <span className="text-xs font-black text-charcoal-text">Order Updates</span>
               </div>
             </div>
           </div>
@@ -150,17 +133,6 @@ export default function FAQSection({ onOpenCrateBuilder, onOpenTracker }: FAQSec
           </button>
           <button
             type="button"
-            onClick={() => setActiveCategory('custom')}
-            className={`px-4 py-2 rounded-full font-bold uppercase tracking-wider transition-all cursor-pointer border ${
-              activeCategory === 'custom'
-                ? 'bg-primary text-white border-primary shadow-xs'
-                : 'bg-white text-stone-600 border-stone-200 hover:border-stone-300'
-            }`}
-          >
-            Custom Threads &amp; Crates (1)
-          </button>
-          <button
-            type="button"
             onClick={() => setActiveCategory('ordering')}
             className={`px-4 py-2 rounded-full font-bold uppercase tracking-wider transition-all cursor-pointer border ${
               activeCategory === 'ordering'
@@ -168,7 +140,7 @@ export default function FAQSection({ onOpenCrateBuilder, onOpenTracker }: FAQSec
                 : 'bg-white text-stone-600 border-stone-200 hover:border-stone-300'
             }`}
           >
-            Freshness &amp; Tracking (2)
+            Order Tracking (1)
           </button>
         </div>
 
@@ -223,20 +195,7 @@ export default function FAQSection({ onOpenCrateBuilder, onOpenTracker }: FAQSec
                       <div className="px-5 pb-6 pt-1 md:px-6 text-xs md:text-sm text-charcoal-text/80 leading-relaxed font-sans border-t border-dashed border-stone-100">
                         <p>{item.answer}</p>
                         
-                        {/* Action buttons if applicable */}
-                        {item.id === 'custom-thread-requests' && onOpenCrateBuilder && (
-                          <div className="mt-4 pt-3 border-t border-stone-100 flex items-center gap-3">
-                            <button
-                              type="button"
-                              onClick={onOpenCrateBuilder}
-                              className="bg-primary text-white px-4 py-2 rounded-lg text-xs font-bold font-mono uppercase tracking-wider hover:bg-primary/90 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
-                            >
-                              <Sparkles className="w-3.5 h-3.5 text-secondary-gold" />
-                              Open Crate Customizer
-                            </button>
-                          </div>
-                        )}
-
+                        {/* Action button for tracking */}
                         {item.id === 'order-tracking' && onOpenTracker && (
                           <div className="mt-4 pt-3 border-t border-stone-100 flex items-center gap-3">
                             <button
@@ -262,10 +221,10 @@ export default function FAQSection({ onOpenCrateBuilder, onOpenTracker }: FAQSec
         <div className="bg-white rounded-2xl p-6 border border-stone-200/80 max-w-2xl mx-auto text-center space-y-2 shadow-xs">
           <div className="flex items-center justify-center gap-2 text-primary">
             <MessageSquare className="w-4 h-4" />
-            <span className="font-serif font-bold text-sm italic">Have a unique or bulk custom thread requirement?</span>
+            <span className="font-serif font-bold text-sm italic">Need help with your order?</span>
           </div>
           <p className="text-xs text-charcoal-text/75 font-sans">
-            Our UK support team is available 24/7 to help arrange customized hampers, special threads, or scheduled delivery dates for your family.
+            Our UK support team is available 24/7 to help with delivery queries, order status, or any questions about your gift.
           </p>
         </div>
 

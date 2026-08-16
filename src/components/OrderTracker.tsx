@@ -33,6 +33,7 @@ interface OrderTrackerProps {
   onAddSimulatedEmail: (orderId: string, email: SimulatedEmail) => void;
   emails: SimulatedEmail[];
   onMarkEmailRead: (emailId: string) => void;
+  currentUser?: any;
 }
 
 export default function OrderTracker({ 
@@ -42,7 +43,8 @@ export default function OrderTracker({
   onUpdateOrderStatus, 
   onAddSimulatedEmail,
   emails, 
-  onMarkEmailRead 
+  onMarkEmailRead,
+  currentUser
 }: OrderTrackerProps) {
   const { formatPrice } = useCurrency();
   const [searchId, setSearchId] = useState('');
@@ -51,13 +53,14 @@ export default function OrderTracker({
   const [selectedEmail, setSelectedEmail] = useState<SimulatedEmail | null>(null);
   const [searchError, setSearchError] = useState('');
 
-  // Auto select the latest order on mount or list update
+  // Auto select the latest order on mount or list update — only for logged-in users
   useEffect(() => {
-    if (orders.length > 0 && !selectedOrder) {
+    const isLoggedIn = currentUser && !currentUser.isAnonymous;
+    if (isLoggedIn && orders.length > 0 && !selectedOrder) {
       setSelectedOrder(orders[orders.length - 1]);
       setSearchId(orders[orders.length - 1].id);
     }
-  }, [orders, selectedOrder]);
+  }, [orders, selectedOrder, currentUser]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -287,7 +290,7 @@ export default function OrderTracker({
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#E5E1DA]/40" />
               <input
                 type="text"
-                placeholder="Enter Reference (e.g. RC-2026-102941)"
+                placeholder="Enter Order ID (e.g. RC-2026-102941)"
                 value={searchId}
                 onChange={(e) => setSearchId(e.target.value)}
                 className="w-full pl-9 pr-4 py-3 bg-[#1A1C20] border border-white/10 rounded-none text-xs text-[#E5E1DA] font-mono focus:border-[#C4A484] focus:outline-none"
@@ -307,9 +310,10 @@ export default function OrderTracker({
             </p>
           )}
 
-          {orders.length > 0 && !selectedOrder && (
+          {/* Only show logged-in user's orders as quick links */}
+          {currentUser && !currentUser.isAnonymous && orders.length > 0 && !selectedOrder && (
             <div className="text-center mt-3">
-              <span className="text-[10px] text-[#E5E1DA]/50 uppercase tracking-wider">Demo Orders Available in System:</span>
+              <span className="text-[10px] text-[#E5E1DA]/50 uppercase tracking-wider">Your Orders:</span>
               <div className="flex gap-2 justify-center mt-1.5 flex-wrap">
                 {orders.map(o => (
                   <button
@@ -322,6 +326,13 @@ export default function OrderTracker({
                 ))}
               </div>
             </div>
+          )}
+
+          {/* Prompt guest users to log in */}
+          {(!currentUser || currentUser.isAnonymous) && (
+            <p className="text-center text-[11px] text-[#E5E1DA]/50 mt-3 font-mono">
+              <span className="text-[#C4A484] font-bold">Sign in</span> to your account to automatically view your orders, or enter your Order ID above to track a shipment.
+            </p>
           )}
         </div>
 

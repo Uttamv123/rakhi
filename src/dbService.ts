@@ -1,31 +1,29 @@
-import { db, auth, isFirebaseConfigured } from './firebase';
-import { 
-  collection, 
-  doc, 
-  setDoc, 
-  getDocs, 
-  onSnapshot, 
-  query, 
-  orderBy,
-  addDoc
-} from 'firebase/firestore';
-import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signOut,
-  onAuthStateChanged,
-  signInAnonymously
-} from 'firebase/auth';
-import { Order, CartItem } from './types';
+import {
+  signIn,
+  signUp,
+  signOut as amplifySignOut,
+  confirmSignUp,
+  resetPassword,
+  confirmResetPassword,
+  getCurrentUser,
+  fetchAuthSession,
+} from 'aws-amplify/auth';
+import { Hub } from 'aws-amplify/utils';
+import { PutCommand, GetCommand, QueryCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
+import { isAwsConfigured, awsConfig, getDynamoClient } from './aws-config';
+import { Order, CartItem, WishlistItem } from './types';
 
-const ORDERS_COLLECTION = 'orders';
-const CART_COLLECTION = 'carts';
+const TABLE_NAME = awsConfig.dynamoTableName;
 
-// Helper to get local storage orders as fallback
-const getLocalOrders = (): Order[] => {
+// ─── Local Storage Helpers ───────────────────────────────────────────────────
+
+const getLocalOrders = (userId?: string): Order[] => {
   try {
     const raw = localStorage.getItem('rakhi_crate_orders');
-    return raw ? JSON.parse(raw) : [];
+    const all: Order[] = raw ? JSON.parse(raw) : [];
+    if (!userId) return all;
+    // Return only orders belonging to this user
+    return all.filter(o => o.userId === userId);
   } catch (e) {
     console.error('Error reading local orders:', e);
     return [];
@@ -33,7 +31,16 @@ const getLocalOrders = (): Order[] => {
 };
 
 const saveLocalOrders = (orders: Order[]) => {
-  localStorage.setItem('rakhi_crate_orders', JSON.stringify(orders));
+  // Merge with existing orders from other users so we don't overwrite them
+  try {
+    const raw = localStorage.getItem('rakhi_crate_orders');
+    const all: Order[] = raw ? JSON.parse(raw) : [];
+    const updatedIds = new Set(orders.map(o => o.id));
+    const otherUsersOrders = all.filter(o => !updatedIds.has(o.id));
+    localStorage.setItem('rakhi_crate_orders', JSON.stringify([...otherUsersOrders, ...orders]));
+  } catch (e) {
+    localStorage.setItem('rakhi_crate_orders', JSON.stringify(orders));
+  }
 };
 
 const getLocalCart = (): CartItem[] => {
@@ -50,7 +57,22 @@ const saveLocalCart = (cart: CartItem[]) => {
   localStorage.setItem('rakhi_crate_cart', JSON.stringify(cart));
 };
 
-// Authentication simulation states
+const getLocalWishlist = (): WishlistItem[] => {
+  try {
+    const raw = localStorage.getItem('rakhi_crate_wishlist');
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.error('Error reading local wishlist:', e);
+    return [];
+  }
+};
+
+const saveLocalWishlist = (wishlist: WishlistItem[]) => {
+  localStorage.setItem('rakhi_crate_wishlist', JSON.stringify(wishlist));
+};
+
+// ─── Local Auth Simulation (Demo Mode) ──────────────────────────────────────
+
 const listeners: ((user: any) => void)[] = [];
 let localUser: any = null;
 
@@ -63,6 +85,7 @@ try {
   }
 } catch (e) {
   console.error('Error loading stored session:', e);
+  localUser = { uid: 'demo-user-123', isAnonymous: true, email: 'demo@rakhicrate.co.uk' };
 }
 
 const notifyListeners = (user: any) => {
@@ -88,16 +111,31 @@ const saveLocalRegisteredUsers = (users: any[]) => {
   localStorage.setItem('rakhi_crate_users', JSON.stringify(users));
 };
 
+// ─── Helper: Get current user ID ────────────────────────────────────────────
+
+async function getCurrentUserId(): Promise<string> {
+  if (!isAwsConfigured) {
+    return localUser?.uid || 'demo-user-123';
+  }
+  try {
+    const user = await getCurrentUser();
+    return user.userId;
+  } catch {
+    return localUser?.uid || 'demo-user-123';
+  }
+}
+
+// ─── Exported Service ────────────────────────────────────────────────────────
+
 export const dbService = {
-  // Authentication
+  // ─── Authentication ──────────────────────────────────────────────────────
+
   async signInAnonymously(): Promise<any> {
-    if (isFirebaseConfigured && auth) {
-      try {
-        const credential = await signInAnonymously(auth);
-        return credential.user;
-      } catch (error) {
-        console.error('Firebase Auth failed, continuing in demo mode:', error);
-      }
+    if (isAwsConfigured) {
+      // With AWS configured, return a guest user (Identity Pool handles unauthenticated access)
+      const guestUser = { uid: 'guest-' + Date.now(), isAnonymous: true, email: '' };
+      notifyListeners(guestUser);
+      return guestUser;
     }
     const guestUser = { uid: 'demo-user-123', isAnonymous: true, email: 'demo@rakhicrate.co.uk' };
     notifyListeners(guestUser);
@@ -105,18 +143,41 @@ export const dbService = {
   },
 
   async signInWithEmail(email: string, password: string): Promise<any> {
-    if (isFirebaseConfigured && auth) {
+    if (isAwsConfigured) {
       try {
-        const credential = await signInWithEmailAndPassword(auth, email, password);
-        return credential.user;
+        const result = await signIn({ username: email, password });
+        if (result.isSignedIn) {
+          const user = await getCurrentUser();
+          const sessionUser = { uid: user.userId, isAnonymous: false, email: email };
+          notifyListeners(sessionUser);
+          return sessionUser;
+        }
+        // If sign-in requires next step (e.g., MFA, confirm sign up)
+        if (result.nextStep?.signInStep === 'CONFIRM_SIGN_UP') {
+          throw new Error('Please verify your email before signing in. Check your inbox for a verification code.');
+        }
+        throw new Error('Sign-in requires additional steps. Please try again.');
       } catch (error: any) {
-        throw new Error(error.message || 'Firebase authentication failed');
+        if (error.name === 'UserNotFoundException' || error.name === 'UserNotFoundError') {
+          throw new Error('User not found. Please check your credentials or create a new account.');
+        }
+        if (error.name === 'NotAuthorizedException') {
+          throw new Error('Incorrect password. Please try again.');
+        }
+        if (error.name === 'UserNotConfirmedException') {
+          throw new Error('Please verify your email before signing in. Check your inbox for a verification code.');
+        }
+        // Re-throw if it's already a user-friendly message
+        if (error.message && !error.name?.includes('Exception')) {
+          throw error;
+        }
+        throw new Error(error.message || 'Authentication failed. Please try again.');
       }
     }
 
     // Local Sandbox auth
     const users = getLocalRegisteredUsers();
-    const matched = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const matched = users.find((u: any) => u.email.toLowerCase() === email.toLowerCase());
     if (!matched) {
       throw new Error('User not found. Please check your credentials or create a new account.');
     }
@@ -130,18 +191,30 @@ export const dbService = {
   },
 
   async signUpWithEmail(email: string, password: string): Promise<any> {
-    if (isFirebaseConfigured && auth) {
+    if (isAwsConfigured) {
       try {
-        const credential = await createUserWithEmailAndPassword(auth, email, password);
-        return credential.user;
+        const result = await signUp({
+          username: email,
+          password,
+          options: {
+            userAttributes: { email },
+          },
+        });
+        // User needs to confirm sign up with verification code
+        const pendingUser = { uid: result.userId || email, isAnonymous: false, email, needsConfirmation: true };
+        notifyListeners(pendingUser);
+        return pendingUser;
       } catch (error: any) {
-        throw new Error(error.message || 'Failed to create user account on Firebase');
+        if (error.name === 'UsernameExistsException') {
+          throw new Error('An account with this email address already exists.');
+        }
+        throw new Error(error.message || 'Failed to create user account.');
       }
     }
 
     // Local Sandbox auth
     const users = getLocalRegisteredUsers();
-    const exists = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const exists = users.find((u: any) => u.email.toLowerCase() === email.toLowerCase());
     if (exists) {
       throw new Error('An account with this email address already exists.');
     }
@@ -149,7 +222,7 @@ export const dbService = {
     const newUser = {
       uid: 'user-' + Math.random().toString(36).substr(2, 9),
       email: email,
-      password: password
+      password: password,
     };
     users.push(newUser);
     saveLocalRegisteredUsers(users);
@@ -159,41 +232,104 @@ export const dbService = {
     return sessionUser;
   },
 
-  async signOut(): Promise<void> {
-    if (isFirebaseConfigured && auth) {
+  async confirmSignUpCode(email: string, code: string): Promise<any> {
+    if (isAwsConfigured) {
       try {
-        await signOut(auth);
-      } catch (e) {
-        console.error(e);
+        await confirmSignUp({ username: email, confirmationCode: code });
+        return { confirmed: true };
+      } catch (error: any) {
+        if (error.name === 'CodeMismatchException') {
+          throw new Error('Invalid verification code. Please check and try again.');
+        }
+        if (error.name === 'ExpiredCodeException') {
+          throw new Error('Verification code has expired. Please request a new code.');
+        }
+        throw new Error(error.message || 'Verification failed. Please try again.');
       }
     }
-    // Set back to a clean guest account
+    return { confirmed: true };
+  },
+
+  async resetPassword(email: string): Promise<void> {
+    if (isAwsConfigured) {
+      try {
+        await resetPassword({ username: email });
+      } catch (error: any) {
+        if (error.name === 'UserNotFoundException') {
+          throw new Error('No account found for that email address.');
+        }
+        throw new Error(error.message || 'Failed to send reset code.');
+      }
+    }
+  },
+
+  async confirmResetPassword(email: string, code: string, newPassword: string): Promise<void> {
+    if (isAwsConfigured) {
+      try {
+        await confirmResetPassword({ username: email, confirmationCode: code, newPassword });
+      } catch (error: any) {
+        if (error.name === 'CodeMismatchException') {
+          throw new Error('Invalid verification code. Please check and try again.');
+        }
+        if (error.name === 'ExpiredCodeException') {
+          throw new Error('Verification code has expired. Please request a new code.');
+        }
+        throw new Error(error.message || 'Password reset failed.');
+      }
+    }
+  },
+
+  async signOut(): Promise<void> {
+    if (isAwsConfigured) {
+      try {
+        await amplifySignOut();
+      } catch (e) {
+        console.error('AWS sign out error:', e);
+      }
+    }
     const guestUser = { uid: 'demo-user-123', isAnonymous: true, email: 'demo@rakhicrate.co.uk' };
     notifyListeners(guestUser);
   },
 
   onAuthStateChanged(callback: (user: any) => void): () => void {
-    if (isFirebaseConfigured && auth) {
-      return onAuthStateChanged(auth, (user) => {
-        if (user) {
-          callback(user);
-        } else {
-          // If no user on firebase auth, fallback to local session or default guest
-          const stored = localStorage.getItem('rakhi_crate_session');
-          if (stored) {
-            callback(JSON.parse(stored));
-          } else {
+    if (isAwsConfigured) {
+      // Check current session immediately
+      getCurrentUser()
+        .then((user) => {
+          callback({ uid: user.userId, isAnonymous: false, email: user.signInDetails?.loginId || '' });
+        })
+        .catch(() => {
+          callback({ uid: 'demo-user-123', isAnonymous: true, email: 'demo@rakhicrate.co.uk' });
+        });
+
+      // Listen for auth events via Amplify Hub
+      const hubListener = Hub.listen('auth', ({ payload }) => {
+        switch (payload.event) {
+          case 'signedIn':
+            getCurrentUser()
+              .then((user) => {
+                callback({ uid: user.userId, isAnonymous: false, email: user.signInDetails?.loginId || '' });
+              })
+              .catch(() => {});
+            break;
+          case 'signedOut':
             callback({ uid: 'demo-user-123', isAnonymous: true, email: 'demo@rakhicrate.co.uk' });
-          }
+            break;
+          case 'tokenRefresh_failure':
+            callback({ uid: 'demo-user-123', isAnonymous: true, email: 'demo@rakhicrate.co.uk' });
+            break;
         }
       });
+
+      return () => {
+        hubListener();
+      };
     }
-    
+
     // Local session observer
     listeners.push(callback);
-    // Fire immediately with active local user
     callback(localUser || { uid: 'demo-user-123', isAnonymous: true, email: 'demo@rakhicrate.co.uk' });
-    
+
     return () => {
       const idx = listeners.indexOf(callback);
       if (idx !== -1) {
@@ -202,103 +338,210 @@ export const dbService = {
     };
   },
 
-  // Orders
+  // ─── Orders ──────────────────────────────────────────────────────────────
+
   async saveOrder(order: Order): Promise<void> {
-    if (isFirebaseConfigured && db) {
-      try {
-        await setDoc(doc(db, ORDERS_COLLECTION, order.id), order);
-        console.log(`Order ${order.id} synchronized with Firestore!`);
-        return;
-      } catch (error) {
-        console.error('Failed to save order to Firestore, saving locally:', error);
+    const userId = await getCurrentUserId();
+    // Always stamp the userId on the order
+    const orderWithUser: Order = { ...order, userId };
+
+    if (isAwsConfigured && localUser && !localUser.isAnonymous) {
+      const client = getDynamoClient();
+      if (client) {
+        try {
+          await client.send(new PutCommand({
+            TableName: TABLE_NAME,
+            Item: {
+              userId,
+              sk: `ORDER#${orderWithUser.id}`,
+              ...orderWithUser,
+              createdAt: orderWithUser.createdAt || new Date().toISOString(),
+            },
+          }));
+          console.log(`Order ${orderWithUser.id} saved to DynamoDB!`);
+          return;
+        } catch (error) {
+          console.error('Failed to save order to DynamoDB, saving locally:', error);
+        }
       }
     }
-    // Fallback
-    const current = getLocalOrders();
-    const updated = [...current.filter(o => o.id !== order.id), order];
+    // Local: fetch all orders for this user, upsert, then save back
+    const current = getLocalOrders(userId);
+    const updated = [...current.filter(o => o.id !== orderWithUser.id), orderWithUser];
     saveLocalOrders(updated);
   },
 
   async getOrders(): Promise<Order[]> {
-    if (isFirebaseConfigured && db) {
-      try {
-        const q = query(collection(db, ORDERS_COLLECTION));
-        const querySnapshot = await getDocs(q);
-        const fetched: Order[] = [];
-        querySnapshot.forEach((doc) => {
-          fetched.push(doc.data() as Order);
-        });
-        if (fetched.length > 0) {
-          return fetched;
+    const userId = await getCurrentUserId();
+    if (isAwsConfigured && localUser && !localUser.isAnonymous) {
+      const client = getDynamoClient();
+      if (client) {
+        try {
+          const result = await client.send(new QueryCommand({
+            TableName: TABLE_NAME,
+            KeyConditionExpression: 'userId = :uid AND begins_with(sk, :prefix)',
+            ExpressionAttributeValues: {
+              ':uid': userId,
+              ':prefix': 'ORDER#',
+            },
+          }));
+          const orders = (result.Items || []).map((item: any) => {
+            const { userId: _uid, sk: _sk, ...orderData } = item;
+            return orderData as Order;
+          });
+          // Sort by createdAt descending
+          orders.sort((a: Order, b: Order) => {
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          });
+          if (orders.length > 0) {
+            return orders;
+          }
+        } catch (error) {
+          console.error('Failed to fetch orders from DynamoDB, using local storage:', error);
         }
-      } catch (error) {
-        console.error('Failed to fetch orders from Firestore, using local storage:', error);
       }
     }
-    return getLocalOrders();
+    // Filter local orders by current userId
+    return getLocalOrders(userId);
   },
 
   subscribeToOrders(callback: (orders: Order[]) => void): () => void {
-    if (isFirebaseConfigured && db) {
-      try {
-        const q = query(collection(db, ORDERS_COLLECTION));
-        return onSnapshot(q, (snapshot) => {
-          const updatedOrders: Order[] = [];
-          snapshot.forEach((doc) => {
-            updatedOrders.push(doc.data() as Order);
-          });
-          callback(updatedOrders);
-        }, (error) => {
-          console.error('Firestore listener error:', error);
-          callback(getLocalOrders());
-        });
-      } catch (e) {
-        console.error('Failed to setup Firestore listener:', e);
-      }
+    if (isAwsConfigured && localUser && !localUser.isAnonymous) {
+      // Initial fetch
+      this.getOrders().then(callback).catch(() => callback(getLocalOrders(localUser?.uid)));
+
+      // Poll every 3 seconds
+      const interval = setInterval(() => {
+        this.getOrders().then(callback).catch(() => callback(getLocalOrders(localUser?.uid)));
+      }, 3000);
+
+      return () => clearInterval(interval);
     }
-    
-    // Fallback polling/immediate callback
-    callback(getLocalOrders());
-    
-    // Simulate real-time updates occasionally checking localStorage
+
+    // Fallback: immediate callback + polling localStorage filtered by userId
+    const userId = localUser?.uid;
+    callback(getLocalOrders(userId));
     const interval = setInterval(() => {
-      callback(getLocalOrders());
+      callback(getLocalOrders(userId));
     }, 3000);
 
     return () => clearInterval(interval);
   },
 
-  // Cart persistence
+  // ─── Cart ────────────────────────────────────────────────────────────────
+
   async saveCart(cart: CartItem[], userId: string = 'anonymous'): Promise<void> {
-    if (isFirebaseConfigured && db) {
-      try {
-        await setDoc(doc(db, CART_COLLECTION, userId), { cart, updatedAt: new Date().toISOString() });
-        return;
-      } catch (error) {
-        console.error('Failed to save cart to Firestore:', error);
+    if (isAwsConfigured && userId !== 'anonymous' && localUser && !localUser.isAnonymous) {
+      const client = getDynamoClient();
+      if (client) {
+        try {
+          await client.send(new PutCommand({
+            TableName: TABLE_NAME,
+            Item: {
+              userId,
+              sk: 'CART#current',
+              items: cart,
+              updatedAt: new Date().toISOString(),
+            },
+          }));
+          return;
+        } catch (error) {
+          console.error('Failed to save cart to DynamoDB:', error);
+        }
       }
     }
     saveLocalCart(cart);
   },
 
   async getCart(userId: string = 'anonymous'): Promise<CartItem[]> {
-    if (isFirebaseConfigured && db) {
-      try {
-        const docRef = doc(db, CART_COLLECTION, userId);
-        const querySnapshot = await getDocs(collection(db, CART_COLLECTION));
-        let fetched: CartItem[] = [];
-        querySnapshot.forEach((doc) => {
-          if (doc.id === userId) {
-            fetched = doc.data().cart as CartItem[];
+    if (isAwsConfigured && userId !== 'anonymous' && localUser && !localUser.isAnonymous) {
+      const client = getDynamoClient();
+      if (client) {
+        try {
+          const result = await client.send(new GetCommand({
+            TableName: TABLE_NAME,
+            Key: { userId, sk: 'CART#current' },
+          }));
+          if (result.Item?.items) {
+            return result.Item.items as CartItem[];
           }
-        });
-        if (fetched.length > 0) {
-          return fetched;
+        } catch (error) {
+          console.error('Failed to fetch cart from DynamoDB:', error);
         }
-      } catch (error) {
-        console.error('Failed to fetch cart from Firestore:', error);
       }
     }
     return getLocalCart();
-  }
+  },
+
+  // ─── Wishlist ────────────────────────────────────────────────────────────
+
+  async saveWishlistItem(userId: string, item: WishlistItem): Promise<void> {
+    if (isAwsConfigured && userId !== 'anonymous') {
+      const client = getDynamoClient();
+      if (client) {
+        try {
+          await client.send(new PutCommand({
+            TableName: TABLE_NAME,
+            Item: {
+              userId,
+              sk: `WISHLIST#${item.id}`,
+              ...item,
+            },
+          }));
+          return;
+        } catch (error) {
+          console.error('Failed to save wishlist item to DynamoDB:', error);
+        }
+      }
+    }
+    // Fallback: save full wishlist to localStorage
+    const current = getLocalWishlist();
+    const updated = [...current.filter(w => w.id !== item.id), item];
+    saveLocalWishlist(updated);
+  },
+
+  async removeWishlistItem(userId: string, itemId: string): Promise<void> {
+    if (isAwsConfigured && userId !== 'anonymous') {
+      const client = getDynamoClient();
+      if (client) {
+        try {
+          await client.send(new DeleteCommand({
+            TableName: TABLE_NAME,
+            Key: { userId, sk: `WISHLIST#${itemId}` },
+          }));
+          return;
+        } catch (error) {
+          console.error('Failed to remove wishlist item from DynamoDB:', error);
+        }
+      }
+    }
+    const current = getLocalWishlist();
+    const updated = current.filter(w => w.id !== itemId);
+    saveLocalWishlist(updated);
+  },
+
+  async getWishlist(userId: string): Promise<WishlistItem[]> {
+    if (isAwsConfigured && userId !== 'anonymous') {
+      const client = getDynamoClient();
+      if (client) {
+        try {
+          const result = await client.send(new QueryCommand({
+            TableName: TABLE_NAME,
+            KeyConditionExpression: 'userId = :uid AND begins_with(sk, :prefix)',
+            ExpressionAttributeValues: {
+              ':uid': userId,
+              ':prefix': 'WISHLIST#',
+            },
+          }));
+          return (result.Items || []).map((item: any) => {
+            const { userId: _uid, sk: _sk, ...wishlistData } = item;
+            return wishlistData as WishlistItem;
+          });
+        } catch (error) {
+          console.error('Failed to fetch wishlist from DynamoDB:', error);
+        }
+      }
+    }
+    return getLocalWishlist();
+  },
 };
