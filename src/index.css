@@ -15,6 +15,11 @@
   --color-charcoal-text: #2C2523;
   --color-warm-cream: #FAF6F0;
   --color-site-bg: #FAF6F0;
+
+  /* Layout spacing — minimum 16px (≈4mm) from screen edges on mobile */
+  --spacing-margin-mobile: 1rem;
+  --spacing-gutter: 2rem;
+  --spacing-container-max: 1280px;
 }
 
 body {
