@@ -576,7 +576,10 @@ export default function App() {
               
               <div className="flex flex-wrap gap-4 pt-2">
                 <button 
-                  onClick={() => setShowProducts(true)}
+                  onClick={() => {
+                    setShowProducts(true);
+                    setTimeout(() => document.getElementById('pre-curated-racks')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+                  }}
                   className="bg-primary text-white px-8 py-4 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-primary/90 active:scale-95 transition-all shadow-md cursor-pointer flex items-center gap-2"
                 >
                   View All Gifts <ArrowRight className="w-4 h-4 text-white" />
