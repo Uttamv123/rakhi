@@ -34,6 +34,7 @@ interface UserProfileDrawerProps {
   onRemoveWishlist: (id: string) => void;
   onAddToCart: (item: CartItem) => void;
   onOpenCart: () => void;
+  onLoginSuccess?: () => void;
 }
 
 export default function UserProfileDrawer({
@@ -44,16 +45,20 @@ export default function UserProfileDrawer({
   wishlist = [],
   onRemoveWishlist,
   onAddToCart,
-  onOpenCart
+  onOpenCart,
+  onLoginSuccess
 }: UserProfileDrawerProps) {
   const { formatPrice } = useCurrency();
   const [activeTab, setActiveTab] = useState<'wishlist' | 'orders'>('wishlist');
 
-  // Auth view: 'signin' | 'signup' | 'verify'
-  const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'verify'>('signin');
+  // Auth view: 'signin' | 'signup' | 'verify' | 'forgot' | 'reset-code' | 'reset-password' | 'reset-done'
+  const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'verify' | 'forgot' | 'reset-code' | 'reset-password' | 'reset-done'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
+  const [resetCode, setResetCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -88,7 +93,8 @@ export default function UserProfileDrawer({
           setSuccess(null);
           setEmail('');
           setPassword('');
-        }, 1500);
+          onLoginSuccess?.();
+        }, 1000);
       } else if (authMode === 'verify') {
         await dbService.confirmSignUpCode(email, verificationCode);
         setSuccess('Email verified! Signing you in...');
@@ -136,6 +142,80 @@ export default function UserProfileDrawer({
     } catch (err) {
       console.error(err);
     }
+  };
+
+  // ── Forgot Password handlers ──────────────────────────────────────────────
+
+  const handleForgotSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+    if (!email) { setError('Please enter your email address.'); return; }
+    setLoading(true);
+    try {
+      await dbService.resetPassword(email);
+      setSuccess('A verification code has been sent to your email.');
+      setAuthMode('reset-code');
+    } catch (err: any) {
+      const msg = err.message || '';
+      if (msg.includes('not found') || msg.includes('UserNotFoundException')) {
+        setError('No account was found with this email address.');
+      } else {
+        setError(msg || 'Failed to send reset code. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetCodeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!resetCode) { setError('Please enter the verification code.'); return; }
+    setAuthMode('reset-password');
+  };
+
+  const handleNewPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+    if (!newPassword || !confirmNewPassword) { setError('Please fill in both password fields.'); return; }
+    if (newPassword !== confirmNewPassword) { setError('Passwords do not match. Please check and try again.'); return; }
+    if (newPassword.length < 8) { setError('Password must be at least 8 characters.'); return; }
+    if (!/[A-Z]/.test(newPassword)) { setError('Password must include at least one uppercase letter.'); return; }
+    if (!/[a-z]/.test(newPassword)) { setError('Password must include at least one lowercase letter.'); return; }
+    if (!/[0-9]/.test(newPassword)) { setError('Password must include at least one number.'); return; }
+    if (!/[^A-Za-z0-9]/.test(newPassword)) { setError('Password must include at least one special character (!@#$% etc.).'); return; }
+    setLoading(true);
+    try {
+      await dbService.confirmResetPassword(email, resetCode, newPassword);
+      setAuthMode('reset-done');
+      setResetCode('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+    } catch (err: any) {
+      const msg = err.message || '';
+      if (msg.includes('CodeMismatch') || msg.includes('Invalid verification')) {
+        setError('Invalid verification code. Please check and try again.');
+      } else if (msg.includes('ExpiredCode') || msg.includes('expired')) {
+        setError('This verification code has expired. Please request a new code.');
+      } else if (msg.includes('InvalidPassword') || msg.includes('password') || msg.includes('Password')) {
+        setError('Your new password does not meet the requirements. Use 8+ chars with uppercase, lowercase, number & special character.');
+      } else {
+        setError(msg || 'Password reset failed. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetForgotFlow = () => {
+    setAuthMode('signin');
+    setResetCode('');
+    setNewPassword('');
+    setConfirmNewPassword('');
+    setError(null);
+    setSuccess(null);
   };
 
   const handleReorderAll = (order: Order) => {
@@ -229,17 +309,184 @@ export default function UserProfileDrawer({
                   <div className="space-y-1">
                     <h3 className="font-serif text-base font-black italic text-primary flex items-center gap-2">
                       <Lock className="w-4 h-4 text-primary" />
-                      {authMode === 'verify' ? 'Verify Your Email' : authMode === 'signin' ? 'Sign In to Your Account' : 'Create Customer Account'}
+                      {authMode === 'verify' ? 'Verify Your Email'
+                        : authMode === 'forgot' ? 'Reset Your Password'
+                        : authMode === 'reset-code' ? 'Enter Verification Code'
+                        : authMode === 'reset-password' ? 'Set New Password'
+                        : authMode === 'reset-done' ? 'Password Reset!'
+                        : authMode === 'signin' ? 'Sign In to Your Account'
+                        : 'Create Customer Account'}
                     </h3>
                     <p className="text-xs text-stone-500 leading-relaxed font-sans">
                       {authMode === 'verify'
                         ? 'Enter the 6-digit code we sent to your email to complete verification.'
-                        : authMode === 'signin' 
-                        ? 'Access your saved address book, real-time shipment map, and complete order history instantly.' 
+                        : authMode === 'forgot'
+                        ? 'Enter your email and we\'ll send a verification code to reset your password.'
+                        : authMode === 'reset-code'
+                        ? `We sent a code to ${email}. Enter it below to continue.`
+                        : authMode === 'reset-password'
+                        ? 'Choose a strong new password for your account.'
+                        : authMode === 'reset-done'
+                        ? 'Your password has been reset successfully.'
+                        : authMode === 'signin'
+                        ? 'Access your saved address book, real-time shipment map, and complete order history instantly.'
                         : 'Register an account to sync custom Rakhi crates, earn festive rewards, and track shipping.'}
                     </p>
                   </div>
 
+                  {/* ── Reset Done Screen ── */}
+                  {authMode === 'reset-done' && (
+                    <div className="pt-2 space-y-4 text-center">
+                      <div className="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center mx-auto border border-emerald-200">
+                        <CheckCircle2 className="w-7 h-7 text-emerald-600" />
+                      </div>
+                      <p className="text-xs text-stone-600 font-sans leading-relaxed">
+                        Your password has been reset successfully. You can now sign in with your new password.
+                      </p>
+                      <button
+                        onClick={resetForgotFlow}
+                        className="w-full py-3 bg-primary hover:bg-primary/95 text-white rounded-xl text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                      >
+                        <User className="w-4 h-4" /> Back to Sign In
+                      </button>
+                    </div>
+                  )}
+
+                  {/* ── Forgot Password — Step 1: Email ── */}
+                  {authMode === 'forgot' && (
+                    <form onSubmit={handleForgotSubmit} className="space-y-3 pt-2">
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase font-bold tracking-wider text-stone-500 font-mono">Email Address</label>
+                        <div className="relative">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400">
+                            <Mail className="w-4 h-4" />
+                          </span>
+                          <input
+                            type="email"
+                            required
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="your.name@example.co.uk"
+                            className="w-full pl-10 pr-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-hidden font-sans text-stone-800"
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-3 bg-primary hover:bg-primary/95 text-white rounded-xl text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm mt-2 disabled:opacity-50"
+                      >
+                        {loading ? <span>Sending Code...</span> : <><span>Send Reset Code</span><ArrowRight className="w-4 h-4" /></>}
+                      </button>
+                      <div className="pt-2 text-center border-t border-stone-100">
+                        <button type="button" onClick={resetForgotFlow} className="text-primary hover:underline text-[11px] font-bold font-mono uppercase tracking-wide flex items-center justify-center gap-1 mx-auto cursor-pointer">
+                          <User className="w-3.5 h-3.5" /> Back to Sign In
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {/* ── Forgot Password — Step 2: Verification Code ── */}
+                  {authMode === 'reset-code' && (
+                    <form onSubmit={handleResetCodeSubmit} className="space-y-3 pt-2">
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase font-bold tracking-wider text-stone-500 font-mono">Verification Code</label>
+                        <p className="text-[10px] text-stone-400 font-sans">Check your inbox (and spam folder) for the 6-digit code.</p>
+                        <div className="relative">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400">
+                            <CheckCircle2 className="w-4 h-4" />
+                          </span>
+                          <input
+                            type="text"
+                            required
+                            value={resetCode}
+                            onChange={(e) => setResetCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                            placeholder="Enter 6-digit code"
+                            maxLength={6}
+                            className="w-full pl-10 pr-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-hidden font-mono text-stone-800 tracking-widest text-center text-lg"
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="submit"
+                        className="w-full py-3 bg-primary hover:bg-primary/95 text-white rounded-xl text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm mt-2"
+                      >
+                        <span>Continue</span><ArrowRight className="w-4 h-4" />
+                      </button>
+                      {/* Resend Code */}
+                      <div className="text-center">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            setError(null); setSuccess(null); setLoading(true);
+                            try {
+                              await dbService.resetPassword(email);
+                              setSuccess('A new code has been sent to your email.');
+                            } catch { setError('Failed to resend code. Please try again.'); }
+                            finally { setLoading(false); }
+                          }}
+                          disabled={loading}
+                          className="text-[11px] text-stone-500 hover:text-primary font-mono underline cursor-pointer disabled:opacity-50"
+                        >
+                          {loading ? 'Sending...' : 'Resend Code'}
+                        </button>
+                      </div>
+                      <div className="pt-1 text-center border-t border-stone-100">
+                        <button type="button" onClick={resetForgotFlow} className="text-primary hover:underline text-[11px] font-bold font-mono uppercase tracking-wide flex items-center justify-center gap-1 mx-auto cursor-pointer">
+                          <User className="w-3.5 h-3.5" /> Back to Sign In
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {/* ── Forgot Password — Step 3: New Password ── */}
+                  {authMode === 'reset-password' && (
+                    <form onSubmit={handleNewPasswordSubmit} className="space-y-3 pt-2">
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase font-bold tracking-wider text-stone-500 font-mono">New Password</label>
+                        <p className="text-[10px] text-stone-400 font-sans">Min 8 chars, uppercase, lowercase, number & special character (!@#$%)</p>
+                        <div className="relative">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400">
+                            <Lock className="w-4 h-4" />
+                          </span>
+                          <input
+                            type="password"
+                            required
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            placeholder="New password"
+                            className="w-full pl-10 pr-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-hidden font-sans text-stone-800"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase font-bold tracking-wider text-stone-500 font-mono">Confirm New Password</label>
+                        <div className="relative">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400">
+                            <Lock className="w-4 h-4" />
+                          </span>
+                          <input
+                            type="password"
+                            required
+                            value={confirmNewPassword}
+                            onChange={(e) => setConfirmNewPassword(e.target.value)}
+                            placeholder="Confirm new password"
+                            className="w-full pl-10 pr-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-hidden font-sans text-stone-800"
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-3 bg-primary hover:bg-primary/95 text-white rounded-xl text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm mt-2 disabled:opacity-50"
+                      >
+                        {loading ? <span>Resetting...</span> : <><span>Reset Password</span><ArrowRight className="w-4 h-4" /></>}
+                      </button>
+                    </form>
+                  )}
+
+                  {/* ── Standard Sign In / Sign Up / Verify forms ── */}
+                  {(authMode === 'signin' || authMode === 'signup' || authMode === 'verify') && (
                   <form onSubmit={handleAuthSubmit} className="space-y-3 pt-2">
                     {/* Email Input */}
                     <div className="space-y-1 relative">
@@ -304,6 +551,19 @@ export default function UserProfileDrawer({
                     </div>
                     )}
 
+                    {/* Forgot Password link — only on sign in screen */}
+                    {authMode === 'signin' && (
+                      <div className="text-right -mt-1">
+                        <button
+                          type="button"
+                          onClick={() => { setError(null); setSuccess(null); setAuthMode('forgot'); }}
+                          className="text-[11px] text-primary hover:underline font-mono font-bold cursor-pointer"
+                        >
+                          Forgot Password?
+                        </button>
+                      </div>
+                    )}
+
                     <button 
                       type="submit"
                       disabled={loading}
@@ -319,8 +579,10 @@ export default function UserProfileDrawer({
                       )}
                     </button>
                   </form>
+                  )} {/* end standard forms conditional */}
 
-                  {/* Toggle Mode */}
+                  {/* Toggle Mode — only for signin/signup/verify */}
+                  {(authMode === 'signin' || authMode === 'signup' || authMode === 'verify') && (
                   <div className="pt-2 text-center border-t border-stone-100 mt-2">
                     <button 
                       onClick={() => { setAuthMode(authMode === 'signin' ? 'signup' : 'signin'); setError(null); setSuccess(null); setVerificationCode(''); }}
@@ -344,6 +606,7 @@ export default function UserProfileDrawer({
                       )}
                     </button>
                   </div>
+                  )}
                 </div>
               ) : (
                 /* PROFILE CARD (Logged In User) */
