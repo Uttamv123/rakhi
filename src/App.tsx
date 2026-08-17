@@ -110,6 +110,7 @@ export default function App() {
 
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
+  const [pendingCheckout, setPendingCheckout] = useState(false); // set true when guest tries to checkout
   
   // Real-time card personalization state
   const [personalizingGift, setPersonalizingGift] = useState<CartItem | null>(null);
@@ -576,7 +577,10 @@ export default function App() {
               
               <div className="flex flex-wrap gap-4 pt-2">
                 <button 
-                  onClick={() => setShowProducts(true)}
+                  onClick={() => {
+                    setShowProducts(true);
+                    setTimeout(() => document.getElementById('pre-curated-racks')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+                  }}
                   className="bg-primary text-white px-8 py-4 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-primary/90 active:scale-95 transition-all shadow-md cursor-pointer flex items-center gap-2"
                 >
                   View All Gifts <ArrowRight className="w-4 h-4 text-white" />
@@ -768,6 +772,12 @@ export default function App() {
 
                       <button
                         onClick={() => {
+                          const isLoggedIn = currentUser && !currentUser.isAnonymous;
+                          if (!isLoggedIn) {
+                            setPendingCheckout(false);
+                            setShowProfile(true);
+                            return;
+                          }
                           setPersonalizingGift({
                             id: `${gift.id}-${Date.now()}`,
                             type: 'pre-curated',
@@ -1139,7 +1149,18 @@ export default function App() {
                     </span>
                   </div>
                   <button
-                    onClick={() => { setIsCartOpen(false); setShowCheckout(true); }}
+                    onClick={() => {
+                      const isLoggedIn = currentUser && !currentUser.isAnonymous;
+                      if (!isLoggedIn) {
+                        // Guest — close cart, open sign-in, remember checkout was requested
+                        setIsCartOpen(false);
+                        setPendingCheckout(true);
+                        setShowProfile(true);
+                      } else {
+                        setIsCartOpen(false);
+                        setShowCheckout(true);
+                      }
+                    }}
                     className="w-full bg-primary text-white py-3.5 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-primary/95 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
                   >
                     Secure Checkout <Lock className="w-3.5 h-3.5 text-white" />
@@ -1203,6 +1224,13 @@ export default function App() {
         onRemoveWishlist={handleRemoveWishlist}
         onAddToCart={handleAddToCart}
         onOpenCart={() => setIsCartOpen(true)}
+        onLoginSuccess={() => {
+          setShowProfile(false);
+          if (pendingCheckout) {
+            setPendingCheckout(false);
+            setShowCheckout(true);
+          }
+        }}
       />
 
       {/* COURIER LOGISTICS & SHIPMENT TRACKER */}
