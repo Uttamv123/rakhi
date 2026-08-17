@@ -31,7 +31,7 @@ interface CheckoutDrawerProps {
 }
 
 export default function CheckoutDrawer({ cart, onClose, onOrderCompleted, onClearCart, userEmail, userId }: CheckoutDrawerProps) {
-  const { formatPrice } = useCurrency();
+  const { formatPrice, currency, convertPrice } = useCurrency();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1); // 1: Shipping, 2: Payment, 3: Processing, 4: Receipt
   
   // Shipping form state
@@ -116,14 +116,20 @@ export default function CheckoutDrawer({ cart, onClose, onOrderCompleted, onClea
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     script.async = true;
     script.onload = () => {
-      // Amount in paise (INR) — Razorpay works in smallest currency unit
-      // Converting GBP to INR approximately (1 GBP ≈ 107 INR) for test purposes
-      const amountInPaise = Math.round(grandTotal * 107 * 100);
+      // Use the exact displayed amount in the selected currency — no conversion
+      // Razorpay requires amount in the smallest unit (paise for INR, cents for USD, fils for AED)
+      const displayedTotal = convertPrice(grandTotal);
+      const smallestUnitMultiplier = currency === 'INR' ? 100 : currency === 'AED' ? 100 : 100;
+      const amountInSmallestUnit = Math.round(displayedTotal * smallestUnitMultiplier);
+
+      // Map our currency codes to Razorpay-supported currency codes
+      // Razorpay supports INR natively; USD and AED require international payments enabled
+      const razorpayCurrency = currency === 'INR' ? 'INR' : currency === 'USD' ? 'USD' : currency === 'AED' ? 'AED' : 'INR';
 
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-        amount: amountInPaise,
-        currency: 'INR',
+        amount: amountInSmallestUnit,
+        currency: razorpayCurrency,
         name: 'SendSmiles',
         description: `Gift Order – ${cart.length} item(s)`,
         image: '/hero-rakhi.png',
@@ -156,11 +162,10 @@ export default function CheckoutDrawer({ cart, onClose, onOrderCompleted, onClea
                 setError('Payment verification failed. Please contact support.');
               }
             } catch {
-              // If verification call fails, still complete order (payment was taken)
               completeOrder(response.razorpay_payment_id);
             }
           } else {
-            // No signature in test mode — complete order directly
+            // Test mode — no signature
             setTimeout(() => completeOrder(response.razorpay_payment_id), 1500);
           }
         },

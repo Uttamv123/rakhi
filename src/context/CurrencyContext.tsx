@@ -1,16 +1,17 @@
 import React, { createContext, useContext, useState } from 'react';
 
-export type CurrencyCode = 'INR' | 'USD' | 'AED';
+export type CurrencyCode = 'GBP' | 'INR' | 'USD' | 'AED';
 
 export interface CurrencyConfig {
   code: CurrencyCode;
   symbol: string;
-  rate: number; // rate from base (GBP) to this currency
+  rate: number; // rate from base (GBP) to this currency — GBP is always 1
   label: string;
 }
 
 export const CURRENCIES: Record<CurrencyCode, CurrencyConfig> = {
-  INR: { code: 'INR', symbol: '₹', rate: 110, label: 'INR (₹)' },
+  GBP: { code: 'GBP', symbol: '£', rate: 1,   label: 'GBP (£)' },
+  INR: { code: 'INR', symbol: '₹', rate: 110,  label: 'INR (₹)' },
   USD: { code: 'USD', symbol: '$', rate: 1.35, label: 'USD ($)' },
   AED: { code: 'AED', symbol: 'AED ', rate: 5.0, label: 'AED (د.إ)' },
 };
@@ -28,7 +29,7 @@ const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const [currency, setCurrencyState] = useState<CurrencyCode>(() => {
     const saved = localStorage.getItem('rakhi_crate_currency');
-    return (saved as CurrencyCode) || 'INR';
+    return (saved as CurrencyCode) || 'GBP';
   });
 
   const setCurrency = (code: CurrencyCode) => {
@@ -44,6 +45,9 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
 
   const formatPrice = (priceInGbp: number): string => {
     const converted = convertPrice(priceInGbp);
+    if (currency === 'GBP') {
+      return `£${converted.toFixed(2)}`;
+    }
     if (currency === 'INR') {
       return `${currentCurrencyConfig.symbol}${Math.round(converted).toLocaleString('en-IN')}`;
     }
