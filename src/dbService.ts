@@ -15,6 +15,23 @@ import { Order, CartItem, WishlistItem } from './types';
 
 const TABLE_NAME = awsConfig.dynamoTableName;
 
+// ─── Newsletter ───────────────────────────────────────────────────────────────
+
+const getLocalNewsletterEmails = (): string[] => {
+  try {
+    const raw = localStorage.getItem('rakhi_newsletter_emails');
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+};
+
+const saveLocalNewsletterEmail = (email: string) => {
+  const existing = getLocalNewsletterEmails();
+  if (!existing.includes(email.toLowerCase())) {
+    existing.push(email.toLowerCase());
+    localStorage.setItem('rakhi_newsletter_emails', JSON.stringify(existing));
+  }
+};
+
 // ─── Local Storage Helpers ───────────────────────────────────────────────────
 
 const getLocalOrders = (userId?: string): Order[] => {
@@ -543,5 +560,65 @@ export const dbService = {
       }
     }
     return getLocalWishlist();
+  },
+
+  // ─── Newsletter ────────────────────────────────────────────────────────────
+
+  async saveNewsletterEmail(email: string): Promise<void> {
+    const normalised = email.trim().toLowerCase();
+    if (!normalised || !normalised.includes('@')) {
+      throw new Error('Please enter a valid email address.');
+    }
+
+    if (isAwsConfigured) {
+      const client = getDynamoClient();
+      if (client) {
+        try {
+          await client.send(new PutCommand({
+            TableName: TABLE_NAME,
+            Item: {
+              userId: 'newsletter',
+              sk: `EMAIL#${normalised}`,
+              email: normalised,
+              signedUpAt: new Date().toISOString(),
+              source: 'website-newsletter',
+            },
+            // Only write if this email doesn't already exist
+            ConditionExpression: 'attribute_not_exists(sk)',
+          }));
+          return;
+        } catch (error: any) {
+          // ConditionalCheckFailedException means already subscribed — that's fine
+          if (error.name === 'ConditionalCheckFailedException') return;
+          console.error('Failed to save newsletter email to DynamoDB:', error);
+          // Fall through to localStorage as backup
+        }
+      }
+    }
+
+    // Fallback: localStorage
+    saveLocalNewsletterEmail(normalised);
+  },
+
+  async getNewsletterEmails(): Promise<string[]> {
+    if (isAwsConfigured) {
+      const client = getDynamoClient();
+      if (client) {
+        try {
+          const result = await client.send(new QueryCommand({
+            TableName: TABLE_NAME,
+            KeyConditionExpression: 'userId = :uid AND begins_with(sk, :prefix)',
+            ExpressionAttributeValues: {
+              ':uid': 'newsletter',
+              ':prefix': 'EMAIL#',
+            },
+          }));
+          return (result.Items || []).map((item: any) => item.email as string);
+        } catch (error) {
+          console.error('Failed to fetch newsletter emails:', error);
+        }
+      }
+    }
+    return getLocalNewsletterEmails();
   },
 };

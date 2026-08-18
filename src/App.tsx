@@ -950,20 +950,7 @@ export default function App() {
               Join the SENDSMILES community of over 12,000 global NRI siblings for early access to custom wooden crates, priority dispatch slots, and courier delivery alerts.
             </p>
             
-            <form onSubmit={(e) => { e.preventDefault(); alert("Wonderful! You've registered for VIP express dispatch updates."); }} className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
-              <input 
-                className="flex-1 bg-black/15 border border-white/20 rounded-lg px-4 py-3 text-xs text-white placeholder-white/60 focus:bg-black/25 focus:outline-none focus:ring-1 focus:ring-secondary-gold font-mono"
-                placeholder="Enter your email address" 
-                type="email"
-                required
-              />
-              <button 
-                type="submit"
-                className="bg-white text-primary px-6 py-3 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-stone-100 transition-all cursor-pointer shadow-sm"
-              >
-                Sign Up
-              </button>
-            </form>
+            <NewsletterForm />
           </div>
         </section>
 
@@ -1314,6 +1301,72 @@ function ProductImageCarousel({ images, alt }: { images: string[]; alt: string }
         ))}
       </div>
     </div>
+  );
+}
+
+// ── Newsletter sign-up form ───────────────────────────────────────────────────
+function NewsletterForm() {
+  const [email, setEmail] = React.useState('');
+  const [status, setStatus] = React.useState<'idle' | 'loading' | 'success' | 'error' | 'duplicate'>('idle');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setStatus('loading');
+    try {
+      await dbService.saveNewsletterEmail(email.trim());
+      setStatus('success');
+      setEmail('');
+    } catch (err: any) {
+      const msg = (err.message || '').toLowerCase();
+      if (msg.includes('already') || msg.includes('duplicate')) {
+        setStatus('duplicate');
+      } else {
+        setStatus('error');
+      }
+    }
+  };
+
+  if (status === 'success') {
+    return (
+      <div className="max-w-md mx-auto bg-white/10 border border-white/20 rounded-xl px-6 py-4 text-white text-sm font-sans">
+        🎉 You're on the list! We'll keep you updated on festival dispatches.
+      </div>
+    );
+  }
+
+  if (status === 'duplicate') {
+    return (
+      <div className="max-w-md mx-auto bg-white/10 border border-white/20 rounded-xl px-6 py-4 text-white text-sm font-sans">
+        ✅ You're already subscribed — we'll keep you posted!
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
+      <input
+        type="email"
+        required
+        value={email}
+        onChange={e => setEmail(e.target.value)}
+        placeholder="Enter your email address"
+        disabled={status === 'loading'}
+        className="flex-1 bg-black/15 border border-white/20 rounded-lg px-4 py-3 text-xs text-white placeholder-white/60 focus:bg-black/25 focus:outline-none focus:ring-1 focus:ring-secondary-gold font-mono disabled:opacity-50"
+      />
+      <button
+        type="submit"
+        disabled={status === 'loading'}
+        className="bg-white text-primary px-6 py-3 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-stone-100 transition-all cursor-pointer shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+      >
+        {status === 'loading' ? (
+          <><span className="w-3.5 h-3.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" /><span>Saving...</span></>
+        ) : 'Sign Up'}
+      </button>
+      {status === 'error' && (
+        <p className="w-full text-center text-red-300 text-[11px] mt-1 font-sans">Something went wrong. Please try again.</p>
+      )}
+    </form>
   );
 }
 
