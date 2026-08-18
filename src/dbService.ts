@@ -570,39 +570,23 @@ export const dbService = {
       throw new Error('Please enter a valid email address.');
     }
 
-    // Always save to localStorage as the primary store (works for guests)
-    saveLocalNewsletterEmail(normalised);
-
-    // Also attempt DynamoDB if user is authenticated
-    if (isAwsConfigured) {
-      const client = getDynamoClient();
-      if (client) {
-        try {
-          // Check if we have a valid auth session before trying DynamoDB
-          const { fetchAuthSession } = await import('aws-amplify/auth');
-          const session = await fetchAuthSession();
-          const idToken = session.tokens?.idToken?.toString();
-          if (!idToken) return; // guest — localStorage is enough
-
-          await client.send(new PutCommand({
-            TableName: TABLE_NAME,
-            Item: {
-              userId: 'newsletter',
-              sk: `EMAIL#${normalised}`,
-              email: normalised,
-              signedUpAt: new Date().toISOString(),
-              source: 'website-newsletter',
-            },
-            ConditionExpression: 'attribute_not_exists(sk)',
-          }));
-        } catch (error: any) {
-          // ConditionalCheckFailedException = already subscribed, that's fine
-          if (error.name === 'ConditionalCheckFailedException') return;
-          // Any other DynamoDB/auth error — localStorage already saved, silently continue
-          console.warn('Newsletter DynamoDB save skipped:', error.message);
-        }
+    const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || '';
+    if (apiBase) {
+      // Call the Lambda via API Gateway — no AWS credentials needed in browser
+      const res = await fetch(`${apiBase}/newsletter`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: normalised }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to save email');
       }
+      return;
     }
+
+    // Fallback if no API configured (local dev without API Gateway)
+    saveLocalNewsletterEmail(normalised);
   },
 
   async getNewsletterEmails(): Promise<string[]> {
