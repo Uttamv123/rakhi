@@ -570,10 +570,20 @@ export const dbService = {
       throw new Error('Please enter a valid email address.');
     }
 
+    // Always save to localStorage as the primary store (works for guests)
+    saveLocalNewsletterEmail(normalised);
+
+    // Also attempt DynamoDB if user is authenticated
     if (isAwsConfigured) {
       const client = getDynamoClient();
       if (client) {
         try {
+          // Check if we have a valid auth session before trying DynamoDB
+          const { fetchAuthSession } = await import('aws-amplify/auth');
+          const session = await fetchAuthSession();
+          const idToken = session.tokens?.idToken?.toString();
+          if (!idToken) return; // guest — localStorage is enough
+
           await client.send(new PutCommand({
             TableName: TABLE_NAME,
             Item: {
@@ -583,21 +593,16 @@ export const dbService = {
               signedUpAt: new Date().toISOString(),
               source: 'website-newsletter',
             },
-            // Only write if this email doesn't already exist
             ConditionExpression: 'attribute_not_exists(sk)',
           }));
-          return;
         } catch (error: any) {
-          // ConditionalCheckFailedException means already subscribed — that's fine
+          // ConditionalCheckFailedException = already subscribed, that's fine
           if (error.name === 'ConditionalCheckFailedException') return;
-          console.error('Failed to save newsletter email to DynamoDB:', error);
-          // Fall through to localStorage as backup
+          // Any other DynamoDB/auth error — localStorage already saved, silently continue
+          console.warn('Newsletter DynamoDB save skipped:', error.message);
         }
       }
     }
-
-    // Fallback: localStorage
-    saveLocalNewsletterEmail(normalised);
   },
 
   async getNewsletterEmails(): Promise<string[]> {
