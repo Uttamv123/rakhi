@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { CartItem, ShippingDetails, Order } from '../types';
 import { useCurrency } from '../context/CurrencyContext';
+import PostcodeInput from './PostcodeInput';
 
 interface CheckoutDrawerProps {
   cart: CartItem[];
@@ -274,13 +275,10 @@ export default function CheckoutDrawer({ cart, onClose, onOrderCompleted, onClea
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-charcoal-text/70 mb-1">UK Postcode *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. SW1A 1AA"
+                    <PostcodeInput
                       value={postcode}
-                      onChange={(e) => setPostcode(e.target.value)}
-                      className="w-full px-4 py-3 border border-stone-200/70 rounded-lg text-xs text-charcoal-text focus:border-primary focus:outline-none bg-warm-cream uppercase font-mono"
+                      onChange={setPostcode}
+                      required
                     />
                   </div>
                   <div>
