@@ -359,11 +359,10 @@ export const dbService = {
 
   async saveOrder(order: Order): Promise<void> {
     const userId = await getCurrentUserId();
-    // Always stamp the userId on the order
     const orderWithUser: Order = { ...order, userId };
 
     if (isAwsConfigured && localUser && !localUser.isAnonymous) {
-      const client = getDynamoClient();
+      const client = await getDynamoClient();
       if (client) {
         try {
           await client.send(new PutCommand({
@@ -391,7 +390,7 @@ export const dbService = {
   async getOrders(): Promise<Order[]> {
     const userId = await getCurrentUserId();
     if (isAwsConfigured && localUser && !localUser.isAnonymous) {
-      const client = getDynamoClient();
+      const client = await getDynamoClient();
       if (client) {
         try {
           const result = await client.send(new QueryCommand({
@@ -449,7 +448,7 @@ export const dbService = {
 
   async saveCart(cart: CartItem[], userId: string = 'anonymous'): Promise<void> {
     if (isAwsConfigured && userId !== 'anonymous' && localUser && !localUser.isAnonymous) {
-      const client = getDynamoClient();
+      const client = await getDynamoClient();
       if (client) {
         try {
           await client.send(new PutCommand({
@@ -472,7 +471,7 @@ export const dbService = {
 
   async getCart(userId: string = 'anonymous'): Promise<CartItem[]> {
     if (isAwsConfigured && userId !== 'anonymous' && localUser && !localUser.isAnonymous) {
-      const client = getDynamoClient();
+      const client = await getDynamoClient();
       if (client) {
         try {
           const result = await client.send(new GetCommand({
@@ -494,7 +493,7 @@ export const dbService = {
 
   async saveWishlistItem(userId: string, item: WishlistItem): Promise<void> {
     if (isAwsConfigured && userId !== 'anonymous') {
-      const client = getDynamoClient();
+      const client = await getDynamoClient();
       if (client) {
         try {
           await client.send(new PutCommand({
@@ -519,7 +518,7 @@ export const dbService = {
 
   async removeWishlistItem(userId: string, itemId: string): Promise<void> {
     if (isAwsConfigured && userId !== 'anonymous') {
-      const client = getDynamoClient();
+      const client = await getDynamoClient();
       if (client) {
         try {
           await client.send(new DeleteCommand({
@@ -539,7 +538,7 @@ export const dbService = {
 
   async getWishlist(userId: string): Promise<WishlistItem[]> {
     if (isAwsConfigured && userId !== 'anonymous') {
-      const client = getDynamoClient();
+      const client = await getDynamoClient();
       if (client) {
         try {
           const result = await client.send(new QueryCommand({
@@ -591,7 +590,7 @@ export const dbService = {
 
   async getNewsletterEmails(): Promise<string[]> {
     if (isAwsConfigured) {
-      const client = getDynamoClient();
+      const client = await getDynamoClient();
       if (client) {
         try {
           const result = await client.send(new QueryCommand({

@@ -26,7 +26,8 @@ import {
   MapPin,
   FileText,
   Database,
-  ChevronUp
+  ChevronUp,
+  MessageSquare
 } from 'lucide-react';
 
 import AgeVerificationModal from './components/AgeVerificationModal';
@@ -36,6 +37,7 @@ import PersonalizeCardModal from './components/PersonalizeCardModal';
 import DbControlCenter from './components/DbControlCenter';
 import UserProfileDrawer from './components/UserProfileDrawer';
 import FAQSection from './components/FAQSection';
+import CustomerSupportSection from './components/CustomerSupportSection';
 import SearchBar from './components/SearchBar';
 
 import { HERO_IMAGES, PANTRY_IMAGES } from './data';
@@ -539,6 +541,16 @@ export default function App() {
 
             <span className="text-stone-300 hidden sm:inline">•</span>
 
+            <a
+              href="#contact-section"
+              className="text-charcoal-text/85 hover:text-primary transition-colors text-[11px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-primary" />
+              Contact
+            </a>
+
+            <span className="text-stone-300 hidden sm:inline">•</span>
+
             <button 
               onClick={() => setShowTracker(true)}
               className="text-charcoal-text/85 hover:text-primary transition-colors text-[11px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer bg-transparent border-none outline-hidden shrink-0"
@@ -958,6 +970,9 @@ export default function App() {
         <FAQSection 
           onOpenTracker={() => setShowTracker(true)}
         />
+
+        {/* CUSTOMER SUPPORT CONTACT SECTION */}
+        <CustomerSupportSection />
       </main>
 
       {/* FOOTER SECTION */}
