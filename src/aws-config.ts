@@ -1,4 +1,5 @@
 import { Amplify } from 'aws-amplify';
+import { fetchAuthSession } from 'aws-amplify/auth';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { fromCognitoIdentityPool } from '@aws-sdk/credential-provider-cognito-identity';
@@ -52,16 +53,38 @@ if (isAwsConfigured) {
   }
 }
 
-// Lazy-initialized DynamoDB Document Client
-let docClient: DynamoDBDocumentClient | null = null;
+// The Cognito User Pool provider key used in the Identity Pool logins map
+const cognitoProviderKey =
+  `cognito-idp.${awsConfig.region}.amazonaws.com/${awsConfig.userPoolId}`;
 
-export function getDynamoClient(): DynamoDBDocumentClient | null {
+/**
+ * Returns a DynamoDB Document Client authenticated with the current Cognito
+ * session. A new client is created on every call so credentials are never
+ * stale across login/logout transitions.
+ *
+ * Returns null when:
+ *  - AWS is not configured
+ *  - The Identity Pool ID is missing
+ *  - There is no authenticated session (guest users)
+ */
+export async function getDynamoClient(): Promise<DynamoDBDocumentClient | null> {
   if (!isAwsConfigured || !awsConfig.identityPoolId) {
     return null;
   }
 
-  if (docClient) {
-    return docClient;
+  // Fetch the current Amplify auth session to get the ID token
+  let idToken: string | undefined;
+  try {
+    const session = await fetchAuthSession();
+    idToken = session.tokens?.idToken?.toString();
+  } catch {
+    // No authenticated session — do not attempt authenticated Identity Pool access
+    return null;
+  }
+
+  if (!idToken) {
+    // User is not signed in — returning null prevents unauthenticated DynamoDB calls
+    return null;
   }
 
   try {
@@ -70,10 +93,14 @@ export function getDynamoClient(): DynamoDBDocumentClient | null {
       credentials: fromCognitoIdentityPool({
         clientConfig: { region: awsConfig.region },
         identityPoolId: awsConfig.identityPoolId,
+        // Pass the Cognito ID token so the Identity Pool treats this as authenticated
+        logins: {
+          [cognitoProviderKey]: idToken,
+        },
       }),
     });
 
-    docClient = DynamoDBDocumentClient.from(dynamoClient, {
+    return DynamoDBDocumentClient.from(dynamoClient, {
       marshallOptions: {
         removeUndefinedValues: true,
         convertClassInstanceToMap: true,
@@ -82,8 +109,6 @@ export function getDynamoClient(): DynamoDBDocumentClient | null {
         wrapNumbers: false,
       },
     });
-
-    return docClient;
   } catch (error) {
     console.error('Failed to create DynamoDB client:', error);
     return null;

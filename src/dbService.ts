@@ -15,6 +15,23 @@ import { Order, CartItem, WishlistItem } from './types';
 
 const TABLE_NAME = awsConfig.dynamoTableName;
 
+// ─── Newsletter ───────────────────────────────────────────────────────────────
+
+const getLocalNewsletterEmails = (): string[] => {
+  try {
+    const raw = localStorage.getItem('rakhi_newsletter_emails');
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+};
+
+const saveLocalNewsletterEmail = (email: string) => {
+  const existing = getLocalNewsletterEmails();
+  if (!existing.includes(email.toLowerCase())) {
+    existing.push(email.toLowerCase());
+    localStorage.setItem('rakhi_newsletter_emails', JSON.stringify(existing));
+  }
+};
+
 // ─── Local Storage Helpers ───────────────────────────────────────────────────
 
 const getLocalOrders = (userId?: string): Order[] => {
@@ -342,11 +359,10 @@ export const dbService = {
 
   async saveOrder(order: Order): Promise<void> {
     const userId = await getCurrentUserId();
-    // Always stamp the userId on the order
     const orderWithUser: Order = { ...order, userId };
 
     if (isAwsConfigured && localUser && !localUser.isAnonymous) {
-      const client = getDynamoClient();
+      const client = await getDynamoClient();
       if (client) {
         try {
           await client.send(new PutCommand({
@@ -374,7 +390,7 @@ export const dbService = {
   async getOrders(): Promise<Order[]> {
     const userId = await getCurrentUserId();
     if (isAwsConfigured && localUser && !localUser.isAnonymous) {
-      const client = getDynamoClient();
+      const client = await getDynamoClient();
       if (client) {
         try {
           const result = await client.send(new QueryCommand({
@@ -432,7 +448,7 @@ export const dbService = {
 
   async saveCart(cart: CartItem[], userId: string = 'anonymous'): Promise<void> {
     if (isAwsConfigured && userId !== 'anonymous' && localUser && !localUser.isAnonymous) {
-      const client = getDynamoClient();
+      const client = await getDynamoClient();
       if (client) {
         try {
           await client.send(new PutCommand({
@@ -455,7 +471,7 @@ export const dbService = {
 
   async getCart(userId: string = 'anonymous'): Promise<CartItem[]> {
     if (isAwsConfigured && userId !== 'anonymous' && localUser && !localUser.isAnonymous) {
-      const client = getDynamoClient();
+      const client = await getDynamoClient();
       if (client) {
         try {
           const result = await client.send(new GetCommand({
@@ -477,7 +493,7 @@ export const dbService = {
 
   async saveWishlistItem(userId: string, item: WishlistItem): Promise<void> {
     if (isAwsConfigured && userId !== 'anonymous') {
-      const client = getDynamoClient();
+      const client = await getDynamoClient();
       if (client) {
         try {
           await client.send(new PutCommand({
@@ -502,7 +518,7 @@ export const dbService = {
 
   async removeWishlistItem(userId: string, itemId: string): Promise<void> {
     if (isAwsConfigured && userId !== 'anonymous') {
-      const client = getDynamoClient();
+      const client = await getDynamoClient();
       if (client) {
         try {
           await client.send(new DeleteCommand({
@@ -522,7 +538,7 @@ export const dbService = {
 
   async getWishlist(userId: string): Promise<WishlistItem[]> {
     if (isAwsConfigured && userId !== 'anonymous') {
-      const client = getDynamoClient();
+      const client = await getDynamoClient();
       if (client) {
         try {
           const result = await client.send(new QueryCommand({
@@ -543,5 +559,54 @@ export const dbService = {
       }
     }
     return getLocalWishlist();
+  },
+
+  // ─── Newsletter ────────────────────────────────────────────────────────────
+
+  async saveNewsletterEmail(email: string): Promise<void> {
+    const normalised = email.trim().toLowerCase();
+    if (!normalised || !normalised.includes('@')) {
+      throw new Error('Please enter a valid email address.');
+    }
+
+    const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || '';
+    if (apiBase) {
+      // Call the Lambda via API Gateway — no AWS credentials needed in browser
+      const res = await fetch(`${apiBase}/newsletter`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: normalised }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to save email');
+      }
+      return;
+    }
+
+    // Fallback if no API configured (local dev without API Gateway)
+    saveLocalNewsletterEmail(normalised);
+  },
+
+  async getNewsletterEmails(): Promise<string[]> {
+    if (isAwsConfigured) {
+      const client = await getDynamoClient();
+      if (client) {
+        try {
+          const result = await client.send(new QueryCommand({
+            TableName: TABLE_NAME,
+            KeyConditionExpression: 'userId = :uid AND begins_with(sk, :prefix)',
+            ExpressionAttributeValues: {
+              ':uid': 'newsletter',
+              ':prefix': 'EMAIL#',
+            },
+          }));
+          return (result.Items || []).map((item: any) => item.email as string);
+        } catch (error) {
+          console.error('Failed to fetch newsletter emails:', error);
+        }
+      }
+    }
+    return getLocalNewsletterEmails();
   },
 };
