@@ -640,6 +640,10 @@ export default function UserProfileDrawer({
                 </div>
               )}
 
+              {/* TABS SELECTOR & CONTENT: Only shown when logged in */}
+              {!isGuest && (
+              <>
+
               {/* TABS SELECTOR: Saved Collection (Wishlist) vs Past Orders */}
               <div className="flex bg-stone-100 p-1 rounded-xl font-mono text-xs font-bold border border-stone-200/80">
                 <button
@@ -774,6 +778,7 @@ export default function UserProfileDrawer({
 
               {/* PAST ORDER HISTORY SECTION */}
               {activeTab === 'orders' && (
+
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="font-serif text-base font-black italic text-stone-900 flex items-center gap-2">
@@ -896,6 +901,9 @@ export default function UserProfileDrawer({
                     </div>
                   )}
                 </div>
+              )}
+
+              </> /* end !isGuest tabs & content */
               )}
 
             </div>
