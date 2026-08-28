@@ -12,6 +12,8 @@
 
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
+import { NodeHttpHandler } from '@aws-sdk/node-http-handler';
+import https from 'https';
 import path from 'path';
 import fs from 'fs';
 import { config } from 'dotenv';
@@ -36,6 +38,9 @@ const REGION = process.env.AWS_REGION;
 
 const client = new DynamoDBClient({
   region: REGION,
+  requestHandler: new NodeHttpHandler({
+    httpsAgent: new https.Agent({ rejectUnauthorized: false }),
+  }),
 });
 
 const docClient = DynamoDBDocumentClient.from(client);
@@ -99,13 +104,6 @@ async function main() {
     const { productId, name } = product;
 
     try {
-      const exists = await productExists(productId);
-      if (exists) {
-        console.log(`⏭️  Skipped (exists): ${productId} — ${name}`);
-        skipped++;
-        continue;
-      }
-
       await insertProduct(product);
       console.log(`✅ Uploaded: ${productId} — ${name}`);
       uploaded++;

@@ -1,9 +1,9 @@
 [
   {
     "productId": "RK001",
-    "name": "Classic Rakhi & Kaju Katli Box",
-    "slug": "classic-rakhi-kaju-katli-box",
-    "description": "Celebrate Raksha Bandhan with a handcrafted Rakhi paired with premium Kaju Katli in a luxury gift box.",
+    "name": "Rakhi & Chocolate Truffle Box",
+    "slug": "rakhi-chocolate-truffle-box",
+    "description": "Celebrate Raksha Bandhan with a beautifully handcrafted Rakhi paired with an indulgent selection of premium chocolate truffles, presented in an elegant gift box.",
     "price": 22.99,
     "currency": "GBP",
     "category": "Gift Boxes",
@@ -11,15 +11,14 @@
     "featured": true,
     "isActive": true,
     "imageKeys": [
-      "products/RK001/image1.webp",
-      "products/RK001/image2.webp"
+      "products/RK001/image1.webp"
     ]
   },
   {
     "productId": "RK002",
-    "name": "Premium Rakhi & Dry Fruit Box",
-    "slug": "premium-rakhi-dry-fruit-box",
-    "description": "Premium Rakhi with a luxury assortment of almonds, cashews, pistachios and raisins.",
+    "name": "Rakhi & Premium Nut Collection",
+    "slug": "rakhi-premium-nut-collection",
+    "description": "A thoughtful Raksha Bandhan gift featuring a beautifully handcrafted Rakhi paired with a premium collection of assorted nuts, perfect for a wholesome celebration.",
     "price": 24.99,
     "currency": "GBP",
     "category": "Gift Boxes",
@@ -27,15 +26,14 @@
     "featured": true,
     "isActive": true,
     "imageKeys": [
-      "products/RK002/image1.webp",
-      "products/RK002/image2.webp"
+      "products/RK002/image1.webp"
     ]
   },
   {
     "productId": "RK003",
-    "name": "Rakhi & Assorted Mithai Box",
-    "slug": "rakhi-assorted-mithai-box",
-    "description": "A festive Rakhi gift box featuring a premium Rakhi with a delicious assortment of traditional Indian sweets.",
+    "name": "Rakhi & Assorted Indian Sweets Box",
+    "slug": "rakhi-assorted-indian-sweets-box",
+    "description": "Make Raksha Bandhan extra special with a handcrafted Rakhi and a delightful assortment of traditional Indian sweets, beautifully presented in a festive gift box.",
     "price": 23.99,
     "currency": "GBP",
     "category": "Gift Boxes",
@@ -43,15 +41,14 @@
     "featured": false,
     "isActive": true,
     "imageKeys": [
-      "products/RK003/image1.webp",
-      "products/RK003/image2.webp"
+      "products/RK003/image1.webp"
     ]
   },
   {
     "productId": "RK004",
-    "name": "Rakhi & Chocolate Celebration Box",
-    "slug": "rakhi-chocolate-celebration-box",
-    "description": "Celebrate Raksha Bandhan with a premium Rakhi and a delightful selection of chocolates.",
+    "name": "Rakhi & Soan Papdi Box",
+    "slug": "rakhi-soan-papdi-box",
+    "description": "A classic Raksha Bandhan combination featuring a beautifully handcrafted Rakhi paired with traditional Soan Papdi in an elegant gift box.",
     "price": 22.99,
     "currency": "GBP",
     "category": "Gift Boxes",
@@ -59,15 +56,14 @@
     "featured": false,
     "isActive": true,
     "imageKeys": [
-      "products/RK004/image1.webp",
-      "products/RK004/image2.webp"
+      "products/RK004/image1.webp"
     ]
   },
   {
     "productId": "RK005",
-    "name": "Rakhi & Healthy Nut Collection",
-    "slug": "rakhi-healthy-nut-collection",
-    "description": "A thoughtful Rakhi gift featuring premium mixed nuts and a beautifully handcrafted Rakhi.",
+    "name": "Rakhi & Kaju Katli Box",
+    "slug": "rakhi-kaju-katli-box",
+    "description": "Celebrate the bond of Raksha Bandhan with a beautifully handcrafted Rakhi paired with premium Kaju Katli, presented in a luxurious gift box.",
     "price": 23.99,
     "currency": "GBP",
     "category": "Gift Boxes",
@@ -75,8 +71,7 @@
     "featured": false,
     "isActive": true,
     "imageKeys": [
-      "products/RK005/image1.webp",
-      "products/RK005/image2.webp"
+      "products/RK005/image1.webp"
     ]
   }
 ]
