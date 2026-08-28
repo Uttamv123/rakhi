@@ -10,6 +10,8 @@
  */
 
 import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { NodeHttpHandler } from '@aws-sdk/node-http-handler';
+import https from 'https';
 import path from 'path';
 import fs from 'fs';
 import { config } from 'dotenv';
@@ -34,6 +36,9 @@ const REGION = process.env.AWS_REGION;
 
 const s3 = new S3Client({
   region: REGION,
+  requestHandler: new NodeHttpHandler({
+    httpsAgent: new https.Agent({ rejectUnauthorized: false }),
+  }),
 });
 
 const SUPPORTED_EXTENSIONS = new Set(['.webp', '.png', '.jpg', '.jpeg']);
@@ -118,12 +123,6 @@ async function main() {
 
     try {
       // Skip if already exists
-      const exists = await objectExists(s3Key);
-      if (exists) {
-        console.log(`⏭️  Skipped (exists): ${s3Key}`);
-        skipped++;
-        continue;
-      }
 
       // Read file and upload
       const fileBuffer = fs.readFileSync(filePath);
